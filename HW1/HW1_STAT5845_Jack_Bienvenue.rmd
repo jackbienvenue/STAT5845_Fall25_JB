@@ -1,0 +1,56 @@
+---
+title: "Homework 1 - STAT5845 - Replicating Covid Charts"
+author: Jack Bienvenue
+date: 25 August 2025
+format: pdf
+header-includes:
+  - \usepackage{tcolorbox}
+  - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
+  - \usepackage{xcolor}
+  - \newcommand{\red}[1]{\textcolor{red}{#1}}
+---
+
+## Figure 1: Data over Space---County-wise COVID Cases
+
+```{r}
+
+```
+
+
+
+
+```{=tex}
+\centering{\red{Question: What patterns do you notice in this map?}}
+
+\begin{tcolorbox}
+
+\end{tcolorbox}
+```
+
+## Figure 2: Data over Time---US COVID Case Time Series
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Looking at this time series, what future behavior would you expect?}}
+
+\begin{tcolorbox}
+
+\end{tcolorbox}
+```
+
+## Figure 3: Data over Space and Time---State-partitioned COVID Case Time Series
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Do all states follow the same pattern, or do some rise and fall earlier than others?}}
+
+\begin{tcolorbox}
+
+\end{tcolorbox}
+```
