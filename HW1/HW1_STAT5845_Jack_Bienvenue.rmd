@@ -1,5 +1,5 @@
 ---
-title: "Homework 1 - STAT5845 - Replicating Covid Charts"
+title: "Homework 1 - Replicating Covid Charts"
 author: Jack Bienvenue
 date: 25 August 2025
 format: pdf
@@ -10,24 +10,96 @@ header-includes:
   - \newcommand{\red}[1]{\textcolor{red}{#1}}
 ---
 
-## Figure 1: Data over Space---County-wise COVID Cases
+``` {r, echo=FALSE}
+# Preliminaries --> Package and Data Import, Data Cleaning
 
-```{r}
+# Package Import
+invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris"),
+  function(pkg) {
+    suppressWarnings(suppressMessages(
+      library(pkg, character.only = TRUE)))}))
 
+# Data Import
+
+## NYT COVID data
+pre_us_counties_2020_df <- read.csv("./data/us-counties-2020.csv")
+us_df <- read.csv("./data/us.csv")
+us_states_df <- read.csv("./data/us-states.csv")
+
+## County Shapefiles
+
+options(tigris_use_cache = TRUE)  # for quickness
+counties_sf <- counties(cb = TRUE, year = 2020, class = "sf")
+
+# Data Cleaning
+
+## Making County, State names compatible:
+
+### US County Covid Cases
+us_counties_2020_df <- pre_us_counties_2020_df %>%
+  mutate(
+    county = str_to_lower(county),
+    state = str_to_lower(state),
+    date = as.Date(date, format = "%m/%d/%y")
+  ) %>%
+  filter(date ==as.Date("2020-08-31")) # Pick out 8/31/20
+
+### US County shapefiles (Contig. 48 only!)
+
+us_counties_shp <- counties_sf %>%
+  mutate(
+    county = str_to_lower(NAME),
+    state = str_to_lower(STATE_NAME)
+  ) %>%
+  filter(
+    !STATE_NAME %in% c(
+      "Alaska", "Hawaii", 
+      "Puerto Rico", 
+      "American Samoa", 
+      "Guam", 
+      "Commonwealth of the Northern Mariana Islands", 
+      "United States Virgin Islands"))
+
+## Attaching data to map:
+joined_map <- left_join(us_counties_shp, us_counties_2020_df, by = c("state", "county"))
 ```
 
+---
 
+## Figure 1: Data over Space---County-wise COVID Cases
 
+```{=tex}
+\raggedright
+```
+
+*Data used: us-counties-2020.csv, 2020 TIGER County Shapefiles*
+
+```{r}
+ggplot(joined_map) +
+  geom_sf(aes(fill = cases)) + 
+  theme_minimal() +
+  labs(title = "Your County Map", fill = "COVID-19 Cases")
+```
 
 ```{=tex}
 \centering{\red{Question: What patterns do you notice in this map?}}
 
 \begin{tcolorbox}
+It appears that urban areas have far greater case counts than rural counterparts, particularly in the American South. For instance, LA County,  Miami-Dade county, Maricopa (Phoeniz, AZ) County, Clark (Las Vegas, NV) County, and Harris (Houston, TX) County, appear to be hotspots.
 
+I also notice the presence of spatial clustering of both high-- and low-count counties. Often, suburbs form gradients from low to high case count areas between high-- and low-clusters.
 \end{tcolorbox}
 ```
 
+---
+
 ## Figure 2: Data over Time---US COVID Case Time Series
+
+```{=tex}
+\raggedright
+```
+
+*Data used: us.csv*
 
 ```{r}
 
@@ -41,7 +113,15 @@ header-includes:
 \end{tcolorbox}
 ```
 
-## Figure 3: Data over Space and Time---State-partitioned COVID Case Time Series
+---
+
+## Figure 3: Data over Space & Time---State-partitioned COVID Case Time Series
+
+```{=tex}
+\raggedright
+```
+
+*Data used: us-states.csv*
 
 ```{r}
 
