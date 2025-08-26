@@ -14,7 +14,7 @@ header-includes:
 # Preliminaries --> Package and Data Import, Data Cleaning
 
 # Package Import
-invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris"),
+invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris", "RColorBrewer"),
   function(pkg) {
     suppressWarnings(suppressMessages(
       library(pkg, character.only = TRUE)))}))
@@ -38,21 +38,19 @@ counties_sf <- counties(cb = TRUE, year = 2020, class = "sf")
 ### US County Covid Cases
 us_counties_2020_df <- pre_us_counties_2020_df %>%
   mutate(
+    fips = sprintf("%05s", fips),
+    fips = as.character(fips),
     county = str_to_lower(county),
     state = str_to_lower(state),
-    date = as.Date(date, format = "%m/%d/%y")
+    date = as.Date(date)
   ) %>%
   filter(date ==as.Date("2020-08-31")) # Pick out 8/31/20
 
 ### US County shapefiles (Contig. 48 only!)
 
 us_counties_shp <- counties_sf %>%
-  mutate(
-    county = str_to_lower(NAME),
-    state = str_to_lower(STATE_NAME)
-  ) %>%
-  filter(
-    !STATE_NAME %in% c(
+  mutate(fips = as.character(GEOID)) %>%
+  filter( !STATE_NAME %in% c(
       "Alaska", "Hawaii", 
       "Puerto Rico", 
       "American Samoa", 
@@ -60,8 +58,8 @@ us_counties_shp <- counties_sf %>%
       "Commonwealth of the Northern Mariana Islands", 
       "United States Virgin Islands"))
 
-## Attaching data to map:
-joined_map <- left_join(us_counties_shp, us_counties_2020_df, by = c("state", "county"))
+## Spatially joining data to make map:
+joined_map <- left_join(us_counties_shp, us_counties_2020_df, by = "fips")
 ```
 
 ---
@@ -72,13 +70,33 @@ joined_map <- left_join(us_counties_shp, us_counties_2020_df, by = c("state", "c
 \raggedright
 ```
 
+```{r}
+View(joined_map)
+```
+
 *Data used: us-counties-2020.csv, 2020 TIGER County Shapefiles*
 
 ```{r}
 ggplot(joined_map) +
-  geom_sf(aes(fill = cases)) + 
+  geom_sf(aes(fill = cases), color = "white", size = 0.1) +
+  coord_sf(crs = 3083) +  # Lambert projection
   theme_minimal() +
-  labs(title = "Your County Map", fill = "COVID-19 Cases")
+  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  labs(
+    title = "COVID-19 Cases by County on 2020-08-31",
+    fill = "COVID-19 Cases",
+    caption = "Source:https://www.nytimes.com/interactive/2021/us/covid-cases.html"
+  ) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size=9),
+    plot.caption = element_text(hjust = 0, face = "bold", size = 7, family = "mono"),  
+    legend.title = element_text(size = 7, face = "bold"),
+    legend.text = element_text(size = 6),       
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank()
+  )
 ```
 
 ```{=tex}
