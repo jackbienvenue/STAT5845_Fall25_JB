@@ -14,7 +14,8 @@ header-includes:
 # Preliminaries --> Package and Data Import, Data Cleaning
 
 # Package Import
-invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris", "RColorBrewer"),
+invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris", 
+                   "RColorBrewer", "scales", "patchwork"),
   function(pkg) {
     suppressWarnings(suppressMessages(
       library(pkg, character.only = TRUE)))}))
@@ -23,7 +24,13 @@ invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris", "RCol
 
 ## NYT COVID data
 pre_us_counties_2020_df <- read.csv("./data/us-counties-2020.csv")
-us_df <- read.csv("./data/us.csv")
+
+us_df <- read.csv("./data/us.csv") %>%
+  mutate(
+    date = as.Date(date)
+  ) %>%
+  filter(date <= as.Date("2020-09-30") & date >= as.Date("2020-03-01"))
+
 us_states_df <- read.csv("./data/us-states.csv")
 
 ## County Shapefiles
@@ -70,26 +77,28 @@ joined_map <- left_join(us_counties_shp, us_counties_2020_df, by = "fips")
 \raggedright
 ```
 
-```{r}
-View(joined_map)
-```
-
 *Data used: us-counties-2020.csv, 2020 TIGER County Shapefiles*
 
-```{r}
+```{r, echo=FALSE}
 ggplot(joined_map) +
   geom_sf(aes(fill = cases), color = "white", size = 0.1) +
   coord_sf(crs = 3083) +  # Lambert projection
   theme_minimal() +
-  scale_fill_distiller(palette = "YlOrRd", direction = 1) +
+  scale_fill_gradientn(
+  colors = c("#fff3c4", 
+             "#FF6500",  
+             "#8B0000"), 
+  na.value = "gray90"
+) +
   labs(
     title = "COVID-19 Cases by County on 2020-08-31",
     fill = "COVID-19 Cases",
-    caption = "Source:https://www.nytimes.com/interactive/2021/us/covid-cases.html"
+    caption="Source:https://www.nytimes.com/interactive/2021/us/covid-cases.html"
   ) +
   theme(
     plot.title = element_text(hjust = 0.5, face = "bold", size=9),
-    plot.caption = element_text(hjust = 0, face = "bold", size = 7, family = "mono"),  
+    plot.caption = element_text(hjust = 0, face = "bold", size = 7, 
+                                family = "mono"),  
     legend.title = element_text(size = 7, face = "bold"),
     legend.text = element_text(size = 6),       
     panel.grid.major = element_blank(),
@@ -119,7 +128,74 @@ I also notice the presence of spatial clustering of both high-- and low-count co
 
 *Data used: us.csv*
 
-```{r}
+```{r, echo=FALSE}
+
+# Record 7-day avg., total cases, total deaths
+avg_7_day <- tail(us_df$cases_avg, 1)
+total_cases <- sum(us_df$cases, na.rm=TRUE)
+total_deaths <- sum(us_df$deaths, na.rm=TRUE)
+
+ggplot(data = us_df, aes(x = date)) +
+  # Area and line (with legend entries)
+  geom_area(aes(y = cases), fill = "pink", alpha = 0.6) +
+  geom_line(aes(y = cases_avg, color = "7-day average"), linewidth = 1) +
+  
+  scale_x_date(
+    date_breaks = "1 month", 
+    date_labels = "%b" 
+  ) +
+  
+  scale_y_continuous(labels = comma) +
+  
+  labs(
+    title = "COVID-19 Cases in the United States",
+    subtitle = "Daily New Cases and 7-Day Average",
+    y = "New Cases",
+    x = NULL,
+    fill = "",  
+    color = "", 
+    caption = paste0("Data through September 30, 2020\n", 
+          "Source:https://www.nytimes.com/interactive/2021/us/covid-cases.html")
+  ) +
+  
+  # Manual legend colors
+  scale_color_manual(
+    values = c("7-day average" = "red"),
+    labels = c(paste0("7-day average\n", format(round(avg_7_day, 0), 
+                                                big.mark=",")))
+  ) +
+  
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 15, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 9, color = 'gray50', hjust = 0.5),
+    axis.title.y = element_text(size = 10, face = "bold"),
+    axis.text = element_text(size = 7),
+    legend.position = c(0.05, 0.95),
+    legend.justification = c("left", "top"),
+    legend.background = element_blank(),
+    legend.text = element_text(color = "red"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(color = "gray90"),
+    panel.grid.minor.y = element_blank(),
+    axis.line = element_blank(),
+    plot.caption = element_text(size = 7, color = "gray50", hjust = 1)
+  ) +
+  
+  # Annotations (rich text so <br> works)
+  annotate("text",
+         x = max(us_df$date),
+         y = max(us_df$cases, na.rm = TRUE) * 0.95,
+         label = paste0("TOTAL CASES: ", "\n", format(total_cases, 
+                        big.mark=",")),
+         hjust = 1, size = 3.5, color = "gray10", fontface = "bold") +
+  annotate("text",
+         x = max(us_df$date),
+         y = max(us_df$cases, na.rm = TRUE) * 0.95,
+         label = paste0("\n\n\n\n\n", "DEATHS: ", "\n", format(total_deaths, 
+                        big.mark=",")),
+         hjust = 1, size = 3.5, color = "gray10", fontface = "bold") 
 
 ```
 
@@ -127,7 +203,7 @@ I also notice the presence of spatial clustering of both high-- and low-count co
 \centering{\red{Question: Looking at this time series, what future behavior would you expect?}}
 
 \begin{tcolorbox}
-
+Extrapolating qualitatively, it is difficult to say. One hypothesis is that a third, higher peak will emerge before leveling off like the two previous peak-decline cycles. We may expect this to happen with the onset winter. Alternatively, it is possible in the near future that the leveling off will continue, or that only modest increases in cases occur. Because of the nature of disease, we should expect smooth changes in case counts, no matter which direction the case counts move. 
 \end{tcolorbox}
 ```
 
@@ -141,14 +217,80 @@ I also notice the presence of spatial clustering of both high-- and low-count co
 
 *Data used: us-states.csv*
 
-```{r}
+```{r, echo=FALSE}
+states_to_plot <- c(
+  "California","Texas","Florida","New York","Georgia",
+  "Illinois","Arizona","North Carolina","New Jersey",
+  "Tennessee","Louisiana","Pennsylvania"
+)
 
+us_states_df$date <- as.Date(us_states_df$date)
+
+# Filter for selected states
+plot_df <- us_states_df %>% filter(state %in% states_to_plot)
+
+# Create a list to store individual state plots
+plots_list <- list()
+
+for (st in states_to_plot) {
+  
+  # Filter data for this state
+  state_df <- plot_df %>% filter(state == st)
+  
+  # Get latest 7-day average for legend
+  avg_7_day <- round(tail(state_df$cases_avg, 1), 0)
+  
+  # Create the plot
+  p <- ggplot(state_df, aes(x = date)) +
+    geom_area(aes(y = cases), fill = "pink", alpha = 0.6) +
+    geom_line(aes(y = cases_avg, color = "7-day average"), linewidth = 1) +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b") +
+    scale_y_continuous(labels = comma) +
+    labs(
+      title = st,
+      subtitle = "Daily New Cases and 7-Day Average",
+      y = "New Cases",
+      x = NULL,
+      fill = "",
+      color = "",
+      caption = paste0("Data through September 30, 2020\n",
+                       "Source: https://www.nytimes.com/interactive/2021/us/covid-cases.html")
+    ) +
+    scale_color_manual(
+      values = c("7-day average" = "red"),
+      labels = c(paste0("7-day average\n", format(avg_7_day, big.mark=",")))
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 8, color = 'gray50', hjust = 0.5),
+      axis.title.y = element_text(size = 9, face = "bold"),
+      axis.text = element_text(size = 7),
+      legend.position = c(0.05, 0.95),
+      legend.justification = c("left", "top"),
+      legend.background = element_blank(),
+      legend.text = element_text(color = "red"),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      panel.grid.major.y = element_line(color = "gray90"),
+      panel.grid.minor.y = element_blank(),
+      axis.line = element_blank(),
+      plot.caption = element_text(size = 6, color = "gray50", hjust = 1)
+    )
+  
+  # Add plot to list
+  plots_list[[st]] <- p
+}
+
+# Combine into a 4x3 grid
+final_plot <- wrap_plots(plots_list, ncol = 3)
+final_plot
 ```
 
 ```{=tex}
 \centering{\red{Question: Do all states follow the same pattern, or do some rise and fall earlier than others?}}
 
 \begin{tcolorbox}
-
+It does not appear that all states follow the same pattern. However, neighboring states appear to have more similarity in their patterns. This homogeneity could have a number of causes; regardless of cause, it is important that states observe their own data, as well as their neighbors' data in order to construct policy effectively for mitigating the spread of disease.
 \end{tcolorbox}
 ```
