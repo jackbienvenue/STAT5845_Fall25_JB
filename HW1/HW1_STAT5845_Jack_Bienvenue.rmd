@@ -15,7 +15,7 @@ header-includes:
 
 # Package Import
 invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris", 
-                   "RColorBrewer", "scales", "patchwork"),
+                   "RColorBrewer", "scales", "patchwork", "ggtext"),
   function(pkg) {
     suppressWarnings(suppressMessages(
       library(pkg, character.only = TRUE)))}))
@@ -31,7 +31,11 @@ us_df <- read.csv("./data/us.csv") %>%
   ) %>%
   filter(date <= as.Date("2020-09-30") & date >= as.Date("2020-03-01"))
 
-us_states_df <- read.csv("./data/us-states.csv")
+us_states_df <- read.csv("./data/us-states.csv") %>%
+  mutate(
+    date = as.Date(date)
+  ) %>%
+  filter(date <= as.Date("2020-09-30") & date >= as.Date("2020-03-01"))
 
 ## County Shapefiles
 
@@ -232,58 +236,73 @@ plot_df <- us_states_df %>% filter(state %in% states_to_plot)
 # Create a list to store individual state plots
 plots_list <- list()
 
-for (st in states_to_plot) {
+ncol_grid <- 4
+nrow_grid <- 3
+
+for (i in seq_along(states_to_plot)) {
   
-  # Filter data for this state
+  st <- states_to_plot[i]
   state_df <- plot_df %>% filter(state == st)
-  
-  # Get latest 7-day average for legend
   avg_7_day <- round(tail(state_df$cases_avg, 1), 0)
   
-  # Create the plot
+  y_max <- max(max(state_df$cases, na.rm = TRUE), 
+               max(state_df$cases_avg, na.rm = TRUE), 10000)
+  
   p <- ggplot(state_df, aes(x = date)) +
-    geom_area(aes(y = cases), fill = "pink", alpha = 0.6) +
-    geom_line(aes(y = cases_avg, color = "7-day average"), linewidth = 1) +
+    geom_area(aes(y = cases), fill = "pink", alpha = 0.75) +
+    geom_line(aes(y = cases_avg), color = "red", linewidth = 0.3) +
+    annotate("text", x = min(state_df$date), y = y_max, 
+             label = paste0("7-day\n","average"), color = "red", hjust = 0, 
+             vjust = 1, size = 1.5) +
+    annotate("text", x = max(state_df$date), y = y_max,
+    label = "Last 14 \n days", color = "gray50", hjust = 1, vjust =1, size =1.5
+    ) +
     scale_x_date(date_breaks = "1 month", date_labels = "%b") +
-    scale_y_continuous(labels = comma) +
-    labs(
-      title = st,
-      subtitle = "Daily New Cases and 7-Day Average",
-      y = "New Cases",
-      x = NULL,
-      fill = "",
-      color = "",
-      caption = paste0("Data through September 30, 2020\n",
-                       "Source: https://www.nytimes.com/interactive/2021/us/covid-cases.html")
+    scale_y_continuous(
+      limits = c(0, y_max),                       
+      labels = scales::label_number(scale = 1/1000, suffix = "k") 
     ) +
-    scale_color_manual(
-      values = c("7-day average" = "red"),
-      labels = c(paste0("7-day average\n", format(avg_7_day, big.mark=",")))
-    ) +
+    labs(title = st) +
     theme_minimal() +
     theme(
-      plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 8, color = 'gray50', hjust = 0.5),
-      axis.title.y = element_text(size = 9, face = "bold"),
-      axis.text = element_text(size = 7),
-      legend.position = c(0.05, 0.95),
-      legend.justification = c("left", "top"),
-      legend.background = element_blank(),
-      legend.text = element_text(color = "red"),
+      plot.title = ggtext::element_textbox_simple(
+        size = 5, face = "bold", hjust = 0.5, halign = 0.5,
+        margin = margin(b = 2), fill = "gray90", box.color = NA         
+      ),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.x = element_text(size = 3.5, color="gray50"),
+      axis.text.y = element_text(size=3.5, color="gray50"),
       panel.grid.major.x = element_blank(),
       panel.grid.minor.x = element_blank(),
       panel.grid.major.y = element_line(color = "gray90"),
       panel.grid.minor.y = element_blank(),
-      axis.line = element_blank(),
-      plot.caption = element_text(size = 6, color = "gray50", hjust = 1)
+      axis.line = element_blank()
     )
   
-  # Add plot to list
+  # Remove x-axis text if NOT on bottom row
+  if (i <= (nrow_grid - 1) * ncol_grid) {
+    p <- p + theme(axis.text.x = element_blank())
+  } else {
+    p <- p + theme(axis.text.x = element_text(size = 4, color="gray50"))
+  }
+  
   plots_list[[st]] <- p
 }
 
-# Combine into a 4x3 grid
-final_plot <- wrap_plots(plots_list, ncol = 3)
+# Combine into a 3x4 grid with overarching title and subtitle
+final_plot <- wrap_plots(plots_list, ncol = ncol_grid) +
+  plot_annotation(
+  title = "COVID-19 Cases by State",
+  subtitle = "Daily New Cases and 7-Day Average, March 01--September 30, 2020",
+  caption = "7-day average shown in red line",
+  theme = theme(
+    plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 8, hjust = 0.5, color="gray40"),
+    plot.caption = element_text(size = 6, color="gray50", hjust = 1)
+  )
+)
+
 final_plot
 ```
 
