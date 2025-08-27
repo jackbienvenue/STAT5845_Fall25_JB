@@ -1,0 +1,17 @@
+---
+author: Jack
+title: In class aug 27
+format: html
+---
+
+```{r, warnings=FALSE}
+library(gstat)
+library(sp)
+```
+
+```{r}
+data(wind)
+wind.loc
+wind.loc$y <- as.numeric(char2dms(as.character(wind.loc[["Latitude"]])))
+wind.loc$x <-as.numeric(char2dms(as.character(wind.loc[["Longitude"]])))
+```
