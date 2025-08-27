@@ -1,0 +1,8 @@
+---
+title: Topic Presentation - STAT5845
+author: Jack Bienvenue
+format: revealjs
+date: 3 October 2025
+---
+
+Hello
