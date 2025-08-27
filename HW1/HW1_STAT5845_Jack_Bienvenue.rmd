@@ -221,7 +221,7 @@ Extrapolating qualitatively, it is difficult to say. One hypothesis is that a th
 
 *Data used: us-states.csv*
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE}
 states_to_plot <- c(
   "California","Texas","Florida","New York","Georgia",
   "Illinois","Arizona","North Carolina","New Jersey",
@@ -295,7 +295,7 @@ final_plot <- wrap_plots(plots_list, ncol = ncol_grid) +
   plot_annotation(
   title = "COVID-19 Cases by State",
   subtitle = "Daily New Cases and 7-Day Average, March 01--September 30, 2020",
-  caption = "7-day average shown in red line",
+  caption = paste0("7-day average shown in red line\n", "Source:https://www.nytimes.com/interactive/2021/us/covid-cases.html"),
   theme = theme(
     plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
     plot.subtitle = element_text(size = 8, hjust = 0.5, color="gray40"),
