@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "An Introduction to Outage Prediction Modeling"
 format: 
  revealjs:
   slideNumber: true
@@ -93,13 +93,9 @@ css: "columns.css"
     </h3>
 </section>
 
-## Let's calculate these:
+## Stationarity Assumptions:
 
-$$
-  \Delta \bar{V}_{\text{month}} = \frac{\bar{V}_{\text{current}} - \bar{V}_{\text{prior}}}{\bar{V}_{\text{prior}}}
-$$
-
-**We evaluate this equation for the two classes**---coastal and inland---for the $332$ months in the dataset *('96-'24)*, giving us $n = 331$ pairs for testing. 
+Include image of covariance maps here. Note that for center plot there's a point to be made about how this chart may be "blind" to temperature localized covariances.
 
 ##
 
