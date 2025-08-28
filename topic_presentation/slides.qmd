@@ -1,8 +1,291 @@
 ---
-title: Topic Presentation - STAT5845
-author: Jack Bienvenue
-format: revealjs
-date: 3 October 2025
+title: ""
+format: 
+ revealjs:
+  slideNumber: true
+  theme: white
+  include-in-header: 
+   text: |
+    <style>
+    .v-center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90%;
+    }
+    </style>
+highlight-style: "github"  
+footer: "Jack Bienvenue | STAT5845" 
+preview-links: false
+css: "columns.css"
 ---
 
-Hello
+<style>
+  .container {
+    display: flex;
+    gap: 20px; /* space between columns */
+    align-items: flex-start; /* aligns top of both columns */
+  }
+
+  .col {
+    flex: 1;
+    text-align: center;
+  }
+
+  .col img {
+    height: 300px; /* desired uniform height */
+    width: auto;   /* maintain aspect ratio */
+    display: block;
+    margin: 0 auto;
+  }
+</style>
+
+<section data-auto-animate>
+  <h1 style="text-align: center;">a</h1>
+  <img src="images/Weather_Data_Assignment_Figure.png" alt="Animation" style="display: block; margin: 0 auto;">
+</section>
+
+<section data-auto-animate>
+  <h1 style="margin-top: 15px; color: teal; text-align: center;">Problem Refresher</h1>
+  <p style="text-align: center;"><b>Climatic risks are growing, especially for coastal properties.</b></p>
+  <div class="container">
+  <div class="col">
+  <h3><em>Sea Level Rise:</em></h3>
+  <img src="images/Weather_Data_Assignment_Figure.png" alt="Animation" style="display: block; margin: 0 auto;">
+  </div>
+  <div class="col">
+  <h3><em>Intensified Storms:</em></h3>
+  <img src="images/Weather_Data_Assignment_Figure.png" alt="Animation" style="display: block; margin: 0 auto;">
+  </div>
+  </div>
+  <h3 style="text-align: center;"> <em>But...</em> </h3>
+</section>
+
+<section data-auto-animate data-background="images/Weather_Data_Assignment_Figure.png" data-background-repeat="repeat" data-background-size="160px">
+  <h3 style="color: aqua; text-align: center; margin-top: 130px;"> <em>But...</em> </h3>
+
+  <h3 class="fragment" style="text-align: center;"> Changes in Coastal Property Values have Accelerated Relative to Inland Property Values. [1]</h3> 
+
+  <h3 class="fragment" style="text-align: center; color: teal; margin-top: 40px;"> Or have they?</h3> 
+</section>
+
+<section data-auto-animate>
+
+  <h3 style="text-align: center; margin-top: 20px;"> Or have they? </h3>
+
+  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: teal;"> The paper which makes this claim:</h3> 
+
+  <ul>
+    <li class="fragment">Uses proprietary data</li>
+    <li class="fragment" style="color: gray;">Does not present full temporal data range introduced </li>
+    <li class="fragment">Does not verify claim, instead cites paper which does not test claim either and has mismatched spatial resolution. [2]</li>
+  </ul>
+
+  <h2 class="fragment" style="text-align: center; color: teal; margin-top: 40px;"> What can we do?</h2> 
+
+</section>
+
+<section data-auto-animate>
+  <h2 style="text-align: center; margin-top: 10px;"> What can we do?</h2> 
+
+  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: teal;">
+    Find <p class="fragment highlight-red">month-over-month changes</p> in <p class="fragment highlight-blue">sample average coastal and non-coastal property values </p> in the United States, using open data.
+    </h3>
+</section>
+
+## Let's calculate these:
+
+$$
+  \Delta \bar{V}_{\text{month}} = \frac{\bar{V}_{\text{current}} - \bar{V}_{\text{prior}}}{\bar{V}_{\text{prior}}}
+$$
+
+**We evaluate this equation for the two classes**---coastal and inland---for the $332$ months in the dataset *('96-'24)*, giving us $n = 331$ pairs for testing. 
+
+##
+
+<section data-auto-animate data-background="images/Weather_Data_Assignment_Figure.png" data-background-repeat="repeat" data-background-size="250px">
+  <h1> Ad-Hoc Methodology Changes </h1>
+  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: cyan"> What changed since last presentation? </h3>
+</section>
+
+<section data-auto-animate>
+  <h3 style="text-align: center; margin-top: 10px"> What changed since last presentation? </h3>
+  <h2 class="fragment" style ="color:teal;"> Random Sampling Technique </h2>
+  <p class="fragment"> Property sample size increased from $30,000$ to $100,000$. </p>
+  <ul>
+    <li class="fragment">Very large sample is drawn at random,</li>
+    <li class="fragment" style="color: gray">3,000+ samples are drawn randomly within each year...</li>
+    <li class="fragment">but year-to-year balancing is employed to prevent sparsity</li>
+  </ul>
+</section>
+
+## Random Sampling Technique:
+
+::: {.v-center-container}
+![](images/annual_distribution_of_data.png)
+
+Sampling technique becomes:
+$$ 
+n_\text{year} = \frac{n}{28},
+$$
+where 28 is the range of years in the study.
+:::
+
+##
+
+<section>
+  <h2>Imbalance Observation:</h2>
+  <p style="color:teal"> <b> Despite coastal residency rate of ~40%, empirically: </b></p>
+  <ul>
+    <li class="fragment">~75% of entries were non-coastal</li>
+    <li class="fragment" style="color: gray">~25% of entries were coastal</li>
+  </ul>
+
+  <p class="fragment" style="color:teal"><b><em>Why?</em> Not clear. Perhaps:</b></p>
+  <ul>
+    <li class="fragment">Coastal urbanization means more rentals, fewer home sales per capita</li>
+    <li class="fragment" style="color: gray">Coastal homeowners tend to hold their homes more often</li>
+  </ul>
+</section>
+
+## Random Sampling Implication:
+
+Amendments to the random sampling technique allow us to expect:
+
+$$
+n_\text{year, coastal} \approx \frac{100000}{28}*\frac{1}{4} \approx 900, \text{and}
+$$
+
+$$
+n_\text{year, inland} \approx \frac{100000}{28}*\frac{3}{4} \approx 2700,
+$$
+
+Still satisfactory for this analysis. 
+
+##
+
+<section data-auto-animate>
+
+<h2>Geocoding Mechanism</h2>
+
+<div style="text-align: center;">
+  <img src="images/Weather_Data_Assignment_Figure.png" style="max-width: 60%; margin: 10px;">
+</div>
+
+<p class="fragment">But before you try your own geocoding project...</p>
+
+<h2 class="fragment" style="color: teal;" >Word of Caution — Google Cloud</h2>
+
+</section>
+
+<section data-auto-animate>
+  <h2>Word of Caution — Google Cloud</h2>
+
+  <div style="text-align: center;" class="fragment fade-in-then-semi-out">
+  <img src="images/Weather_Data_Assignment_Figure.png" alt="Google Cloud Console Screenshot" style="max-width: 60%; margin: 10px;">
+  <img src="images/Weather_Data_Assignment_Figure.png" alt="Google Cloud Billing Screenshot" style="max-width: 60%; margin: 10px;">
+</div>
+
+  <p style="margin-top: 20px; font-weight: bold; color: red; text-align: center;" class="fragment grow">
+    I made this mistake, don't do the same!
+  </p>
+
+  <h2 style="margin-top: 10px; text-align: center; color: teal" class="fragment"> Now, let's test hypotheses!</h2>
+</section>
+
+<section data-auto-animate>
+  <h2 style="text-align: center;"> Now, let's test hypotheses!</h2>
+
+<p style="color:silver; text-align: center;">$H_0$: The <b>difference</b> in the <b>average monthly rate of change</b> of home valuations between coastal and non-coastal counties is <b>zero</b>, versus</p>
+
+<p style="color:olive; text-align: center;">$H_1$: The <b>difference</b> in the <b>average monthly rate of change</b> of valuations between coastal and non-coastal counties is <b>not zero</b>,</p>
+
+<p> With $α = 0.05$ as our significance level. Alternatively,</p>
+
+<p style="color:silver; text-align: center;"> $H_0: \mu_{\Delta \bar{V}_{\text{month, coastal}}}$ -
+$\mu_{\Delta \bar{V}_{\text{month, inland}}}$ = 0, vs.
+ </p>
+
+<p style="color:olive; text-align: center;"> $H_1: \mu_{\Delta \bar{V}_{\text{month, coastal}}}$ -
+$\mu_{\Delta \bar{V}_{\text{month, inland}}} \neq 0.$
+ </p>
+</section>
+
+<section data-auto-animate>
+<h2 style="color: teal; text-align: center; margin-top: 10px;">Now, let's test hypotheses!</h2>
+
+<h2 style="text-align: center; margin-top: 10px;" class="fragment">What do we find?</h2>
+
+<p class="fragment"> No evidence to suggest that the month-over-month rate of change for property values differs on average for coastal and inland properties (1996-2024, $p = 0.182$) </p>
+
+<h2 style="text-align: center; margin-top: 10px; color: teal;" class="fragment"> Implications? </h2>
+</section>
+
+<section data-auto-animate>
+<h2 style="text-align: center;"> Implications? </h2>
+
+<p class="fragment"> Coastal property risks are either not priced in, and/or other market forces are muting the effects of priced climate risks. </p>
+
+<h2 style="text-align: center; color: teal;" class="fragment"> Are we suprised? </h2>
+
+</section>
+
+<section data-auto-animate>
+<h2 style="text-align: center;"> Are we suprised? </h2>
+
+<div style="text-align: center;" class="fragment">
+  <img src="images/Weather_Data_Assignment_Figure.png" alt="Google Cloud Console Screenshot" style="max-width: 70%; margin: 10px;">
+</div>
+
+
+<h2 style="text-align: center; color: teal;" class="fragment"> The Bottom Line </h2>
+</section>
+
+<section data-auto-animate>
+<h2 style="text-align: center;"> The Bottom Line </h2>
+
+<p style="text-align: center;" class="fragment"> While our results conflict with a claim that served as a basis for the paper mentioned...</p>
+
+<p class="fragment" style="text-align: center;">
+  <span class="fragment highlight-red" style="font-weight: bold;">
+    We have reason to believe that market forces <em>are</em> delaying climatic risk-related coastal property depreciation
+  </span>
+</p>
+
+<div style="text-align: center;" class="fragment">
+  <img src="images/Weather_Data_Assignment_Figure.png" style="max-width: 45%; margin: 10px;">
+</div>
+
+</section>
+
+## Scholarly References
+
+<ol>
+  <li id="ref1">McNamara, D. E., Smith, M. D., Williams, Z., Gopalakrishnan, S., & Landry, C. E. (2024). Policy and market forces delay real estate price declines on the US coast. Nature Communications, 15(1), 2209.</li>
+  <li id="ref2">
+  Rapach, D. E., & Strauss, J. K. (2009). 
+  <i>Differences in housing price forecastability across US states</i>. 
+  <i>International Journal of Forecasting, 25</i>(2), 351–372. 
+  <a href="https://doi.org/10.1016/j.ijforecast.2009.01.009" target="_blank">
+    https://doi.org/10.1016/j.ijforecast.2009.01.009
+  </a>
+  </li>
+</ol>
+
+
+## Image & Article Credits {.scrollable}
+
+- Slide 2 lightning gif - https://vimeo.com/245581179
+- Slide 3 FL SLR gif - https://www.nrdc.org/stories/sea-level-rise-101 
+- Slide 3 hurricane gif - https://www.sciencefriday.com/segments/water-water-everywhere/ 
+- Slide 4 graph - [1]
+- Slide 8 flowchart graphic - https://www.istockphoto.com/illustrations/flow-chart
+- Slide 14 Google Cloud logo - https://en.m.wikipedia.org/wiki/File:Google_Cloud_logo.svg
+- Slide 19 House - https://www.bostonglobe.com/2022/05/11/science/two-north-carolina-beach-houses-collapse-into-ocean-one-day/
+
+## Thank you!
+
+Good luck on jobs, continuing education, or other upcoming pursuits! Have an awesome summer.
+<br><br>
+<br><br>
+<h2 style="text-align: center;"> **Any questions?** </h2>
