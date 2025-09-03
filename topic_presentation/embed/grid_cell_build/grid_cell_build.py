@@ -3,10 +3,13 @@ from shapely.geometry import Point, Polygon
 import cfgrib
 import folium
 import warnings
+import os
+
 warnings.filterwarnings("ignore")
 
 # Load data from GRIB
-file_path = "data/download_ERA5_LAND_package_1979_01.grib"
+script_dir = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(script_dir, "data/download_ERA5_LAND_package_1979_01.grib")
 hourly_data = cfgrib.open_dataset(
     file_path,
     backend_kwargs={'filter_by_keys': {'typeOfLevel': 'surface', 'step': 1}}
