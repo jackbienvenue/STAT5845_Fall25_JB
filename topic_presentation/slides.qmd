@@ -40,7 +40,7 @@ css: "columns.css"
   }
 </style>
 
-<!-- ─── Slide 1: Introduction ─── -->
+<!-- ─── Slide 2: Introduction ─── -->
 
 <section data-auto-animate data-background-image="images/snowy_tree_on_lines.png">
   <h1 style="text-align: center; color: black;">Problem Background</h1>
@@ -52,7 +52,7 @@ css: "columns.css"
 
 </section>
 
-<!-- ─── Slide 2: --------- ─── -->
+<!-- ─── Slide 3: --------- ─── -->
 
 <section data-auto-animate>
   <h1 style="margin-top: 15px; color: teal; text-align: center;">Problem Paradigm</h1>
@@ -68,7 +68,7 @@ css: "columns.css"
   </div>
 </section>
 
-<!-- ─── Slide 3: ------ ─── -->
+<!-- ─── Slide 4: ------ ─── -->
 
 <section data-auto-animate data-background="images/Area_of_Study_map_background.png" data-background-repeat="repeat" data-background-size="300px">
   <h3 style="color: black; text-align: center; margin-top: 140px;"> <em>How can we organize the effort to predict outages? </em> </h3>
@@ -78,7 +78,7 @@ css: "columns.css"
   <h3 class="fragment" style="text-align: center; color: forestgreen; margin-top: 40px;"> Spatial Data Processing is Essential to Begin</h3> 
 </section>
 
-<!-- ─── Slide 4: ------ ─── -->
+<!-- ─── Slide 5: ------ ─── -->
 
 <section data-auto-animate>
 
@@ -97,23 +97,53 @@ css: "columns.css"
 
 </section>
 
-<!-- ─── Slide 5: ------ ─── -->
+<!-- ─── Slide 6: ------ ─── -->
 
 <section data-auto-animate>
-  <h3 style="text-align: center; margin-top: 10px;"> Let's Inspect the Data's Spatial Organization</h3> 
-
-  
+  <h3 style="text-align: center; margin-top: 0px;"> Let's Inspect the Data's Spatial Organization</h3> 
+  <p style="text-align: center;"> Here are the locations of weather data records: </p>
+<div style="text-align: center;">
+  <iframe
+    src="embed/trial_point_map.html"
+    width="85%"
+    height="450"
+    style="border: none;">
+  </iframe>
+  <h3 style="text-align: center; margin-top: 0px;">  Expression as a Lattice</h3> 
+</div>
 </section>
 
-## Stationarity Assumptions:
+<!-- ─── Slide 7: ------ ─── -->
 
-Include image of covariance maps here. Note that for center plot there's a point to be made about how this chart may be "blind" to temperature localized covariances.
+<section data-auto-animate>
+  <h3 style="text-align: center; margin-top: 0px;"> Expression as a Lattice </h3> 
+  <p style="text-align: center;"> We create areas, assuming regularity in measurement: </p>
+<div style="text-align: center;">
+  <iframe
+    src="embed/shapefile_build.html"
+    width="85%"
+    height="450"
+    style="border: none;">
+  </iframe>
+</div>
+  <h3 style="text-align: center;"> Still, an issue remains </h3>
+</section>
 
-##
+<!-- Slide 8: ───  ─── -->
 
-<section data-auto-animate data-background="images/Weather_Data_Assignment_Figure.png" data-background-repeat="repeat" data-background-size="250px">
-  <h1> Ad-Hoc Methodology Changes </h1>
-  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: cyan"> What changed since last presentation? </h3>
+<section data-auto-animate>
+  <h3 style="text-align: center;"> Still, an issue remains </h3>
+  <p> How do we resolve the difference in input weather data and our geographic regions of interest (ROIs)--Connecticut's towns?</p>
+<div style="text-align: center;">
+  <img src="images/Weather_Data_Assignment_Figure.png" style="max-width: 70%; margin: 10px;">
+</div>
+</section>
+
+<!-- Slide 9: ───  ─── -->
+
+<section data-auto-animate data-background="images/tree_falling.gif" data-background-repeat="repeat" data-background-size="550px">
+  <h1 style="text-align: center; color: white; margin-top:75px"> Back to Outages </h1>
+  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: white"> How to record outages </h3>
 </section>
 
 <section data-auto-animate>
@@ -126,6 +156,14 @@ Include image of covariance maps here. Note that for center plot there's a point
     <li class="fragment">but year-to-year balancing is employed to prevent sparsity</li>
   </ul>
 </section>
+
+<!-- Slide 10: ───  ─── -->
+
+## Stationarity Assumptions:
+
+Include image of covariance maps here. Note that for center plot there's a point to be made about how this chart may be "blind" to temperature localized covariances.
+
+##
 
 ## Random Sampling Technique:
 
