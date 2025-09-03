@@ -33,55 +33,58 @@ css: "columns.css"
   }
 
   .col img {
-    height: 300px; /* desired uniform height */
+    height: 400px; /* desired uniform height */
     width: auto;   /* maintain aspect ratio */
     display: block;
     margin: 0 auto;
   }
 </style>
 
-<section data-auto-animate>
-  <h1 style="text-align: center;">a</h1>
-  <img src="images/Weather_Data_Assignment_Figure.png" alt="Animation" style="display: block; margin: 0 auto;">
+<section data-auto-animate data-background-image="images/snowy_tree_on_lines.png">
+  <h1 style="text-align: center; color: black;">Problem Background</h1>
+
+  <p style="text-align: left;">Power outages threaten human life, stifle local economies and education, and lead to dangerous conditions. Modern approaches to building outage prediction models (OPMs) use a variety of methods from simple linear regression to ensemble machine learning methods. </p>
+
+
+ <p style="text-align: center;"> <b>My goal is to...</b> </p>
+
 </section>
 
+
 <section data-auto-animate>
-  <h1 style="margin-top: 15px; color: teal; text-align: center;">Problem Refresher</h1>
-  <p style="text-align: center;"><b>Climatic risks are growing, especially for coastal properties.</b></p>
+  <h1 style="margin-top: 15px; color: teal; text-align: center;">Problem Paradigm</h1>
+  <p style="text-align: center;"><b>We must focus on extreme observations for Outage Prediction Models (OPMs).</b></p>
   <div class="container">
   <div class="col">
-  <h3><em>Sea Level Rise:</em></h3>
-  <img src="images/Weather_Data_Assignment_Figure.png" alt="Animation" style="display: block; margin: 0 auto;">
+  <img src="images/ECDFs.png" alt="Animation" style="display: block; margin: 0 auto; width=100%; height=100%">
   </div>
   <div class="col">
-  <h3><em>Intensified Storms:</em></h3>
-  <img src="images/Weather_Data_Assignment_Figure.png" alt="Animation" style="display: block; margin: 0 auto;">
+  <h3><em></em></h3>
+  <img src="images/2D_scatterplot_z_scores.png" alt="Animation" style="display: block; margin: 0 auto; width=100%; height=100%">
   </div>
   </div>
-  <h3 style="text-align: center;"> <em>But...</em> </h3>
 </section>
 
-<section data-auto-animate data-background="images/Weather_Data_Assignment_Figure.png" data-background-repeat="repeat" data-background-size="160px">
-  <h3 style="color: aqua; text-align: center; margin-top: 130px;"> <em>But...</em> </h3>
+<section data-auto-animate data-background="images/Area_of_Study_map_background.png" data-background-repeat="repeat" data-background-size="200px">
+  <h3 style="color: black; text-align: center; margin-top: 140px;"> <em>How can we organize the effort to predict outages? </em> </h3>
 
-  <h3 class="fragment" style="text-align: center;"> Changes in Coastal Property Values have Accelerated Relative to Inland Property Values. [1]</h3> 
+  <h3 class="fragment" style="text-align: center;"> By constructing a statistical framework, but...</h3> 
 
-  <h3 class="fragment" style="text-align: center; color: teal; margin-top: 40px;"> Or have they?</h3> 
+  <h3 class="fragment" style="text-align: center; color: forestgreen; margin-top: 40px;"> Spatial Data Processing is Essential to Get Started</h3> 
 </section>
 
 <section data-auto-animate>
 
-  <h3 style="text-align: center; margin-top: 20px;"> Or have they? </h3>
+  <h3 style="text-align: center; margin-top: 20px;"> Spatial Data Processing is Essential to Get Started</h3>
 
-  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: teal;"> The paper which makes this claim:</h3> 
+  <h3 class="fragment" style="text-align: left ; margin-top: 40px; color: forestgreen;"> Data Sources</h3> 
 
   <ul>
-    <li class="fragment">Uses proprietary data</li>
-    <li class="fragment" style="color: gray;">Does not present full temporal data range introduced </li>
-    <li class="fragment">Does not verify claim, instead cites paper which does not test claim either and has mismatched spatial resolution. [2]</li>
+    <li class="fragment">ECMWF</li>
+
   </ul>
 
-  <h2 class="fragment" style="text-align: center; color: teal; margin-top: 40px;"> What can we do?</h2> 
+  <h2 class="fragment" style="text-align: center; color: teal; margin-top: 40px;"> Let's Inspect the Spatial Organization of the Data</h2> 
 
 </section>
 
@@ -271,13 +274,8 @@ $\mu_{\Delta \bar{V}_{\text{month, inland}}} \neq 0.$
 
 ## Image & Article Credits {.scrollable}
 
-- Slide 2 lightning gif - https://vimeo.com/245581179
-- Slide 3 FL SLR gif - https://www.nrdc.org/stories/sea-level-rise-101 
-- Slide 3 hurricane gif - https://www.sciencefriday.com/segments/water-water-everywhere/ 
-- Slide 4 graph - [1]
-- Slide 8 flowchart graphic - https://www.istockphoto.com/illustrations/flow-chart
-- Slide 14 Google Cloud logo - https://en.m.wikipedia.org/wiki/File:Google_Cloud_logo.svg
-- Slide 19 House - https://www.bostonglobe.com/2022/05/11/science/two-north-carolina-beach-houses-collapse-into-ocean-one-day/
+- Slide 2 - Pine on power lines, Eversource via FOX61 News (https://www.fox61.com/article/news/local/outreach/awareness-months/crews-busy-as-trees-fall-on-powerlines-across-the-state/520-f1f1a672-f77e-40ed-9ba4-8d3e8aec8b89)
+- 
 
 ## Thank you!
 
