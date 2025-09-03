@@ -40,16 +40,19 @@ css: "columns.css"
   }
 </style>
 
+<!-- ─── Slide 1: Introduction ─── -->
+
 <section data-auto-animate data-background-image="images/snowy_tree_on_lines.png">
   <h1 style="text-align: center; color: black;">Problem Background</h1>
 
   <p style="text-align: left;">Power outages threaten human life, stifle local economies and education, and lead to dangerous conditions. Modern approaches to building outage prediction models (OPMs) use a variety of methods from simple linear regression to ensemble machine learning methods. </p>
 
 
- <p style="text-align: center;"> <b>My goal is to...</b> </p>
+ <p style="text-align: center;"> <b>My task was to deploy a transparent statistical method for predicting customer outages town-by-town for the state of Connecticut.</b> </p>
 
 </section>
 
+<!-- ─── Slide 2: --------- ─── -->
 
 <section data-auto-animate>
   <h1 style="margin-top: 15px; color: teal; text-align: center;">Problem Paradigm</h1>
@@ -65,35 +68,41 @@ css: "columns.css"
   </div>
 </section>
 
-<section data-auto-animate data-background="images/Area_of_Study_map_background.png" data-background-repeat="repeat" data-background-size="200px">
+<!-- ─── Slide 3: ------ ─── -->
+
+<section data-auto-animate data-background="images/Area_of_Study_map_background.png" data-background-repeat="repeat" data-background-size="300px">
   <h3 style="color: black; text-align: center; margin-top: 140px;"> <em>How can we organize the effort to predict outages? </em> </h3>
 
   <h3 class="fragment" style="text-align: center;"> By constructing a statistical framework, but...</h3> 
 
-  <h3 class="fragment" style="text-align: center; color: forestgreen; margin-top: 40px;"> Spatial Data Processing is Essential to Get Started</h3> 
+  <h3 class="fragment" style="text-align: center; color: forestgreen; margin-top: 40px;"> Spatial Data Processing is Essential to Begin</h3> 
 </section>
+
+<!-- ─── Slide 4: ------ ─── -->
 
 <section data-auto-animate>
 
-  <h3 style="text-align: center; margin-top: 20px;"> Spatial Data Processing is Essential to Get Started</h3>
+  <h3 style="text-align: center; margin-top: 20px;"> Spatial Data Processing is Essential to Begin</h3>
 
   <h3 class="fragment" style="text-align: left ; margin-top: 40px; color: forestgreen;"> Data Sources</h3> 
 
   <ul>
-    <li class="fragment">ECMWF</li>
-
+    <li class="fragment">European Centre for Medium-Range Weather Forecasting (ECMWF) -- 40+ years of Connecticut weather data</li>
+    <li class="fragment">Eversource -- Outage Data</li>
+    <li class="fragment">Eversource Energy Center -- Classified weather events</li>
+    <li class="fragment">Census Bureau -- Shapefiles for CT towns</li>
   </ul>
 
-  <h2 class="fragment" style="text-align: center; color: teal; margin-top: 40px;"> Let's Inspect the Spatial Organization of the Data</h2> 
+  <h3 class="fragment" style="text-align: center; color: forestgreen; margin-top: 20px;"> Let's Inspect the Data's Spatial Organization</h3> 
 
 </section>
 
-<section data-auto-animate>
-  <h2 style="text-align: center; margin-top: 10px;"> What can we do?</h2> 
+<!-- ─── Slide 5: ------ ─── -->
 
-  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: teal;">
-    Find <p class="fragment highlight-red">month-over-month changes</p> in <p class="fragment highlight-blue">sample average coastal and non-coastal property values </p> in the United States, using open data.
-    </h3>
+<section data-auto-animate>
+  <h3 style="text-align: center; margin-top: 10px;"> Let's Inspect the Data's Spatial Organization</h3> 
+
+  
 </section>
 
 ## Stationarity Assumptions:
