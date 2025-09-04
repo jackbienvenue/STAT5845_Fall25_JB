@@ -1,0 +1,273 @@
+---
+title: "Homework 2 - Replicating Connecticut Temperature Graphics"
+author: Jack Bienvenue
+date: 25 August 2025
+format: pdf
+header-includes:
+  - \usepackage{tcolorbox}
+  - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
+  - \usepackage{xcolor}
+  - \newcommand{\red}[1]{\textcolor{red}{#1}}
+---
+
+Please note that "CT3456" was not available when I was downloading data. Also note that I chose to calculate the daily mean temperature as the average of the high and low temperature for a station each day. 
+
+---
+
+``` {r, echo=FALSE}
+# Preliminaries --> Package and Data Import, Data Cleaning
+
+# Package Import
+invisible(lapply(c("ggplot2", "dplyr", "tidyr", "sf", "stringr", "tigris", 
+                   "RColorBrewer", "scales", "patchwork", "ggtext",
+                   "maps", "sp", "mapdata", "gstat", "geosphere"),
+  function(pkg) {
+    suppressWarnings(suppressMessages(
+      library(pkg, character.only = TRUE)))}))
+
+# Data Import
+
+CT_weather_df <- read.csv('./data/CT_temps_highs.csv') # contains high temps
+lows_df <- read.csv('./data/CT_temps_lows.csv') # contains low temps
+
+## Merge dataframes, take avg temperature and add as column:
+
+CT_weather_df$low <- lows_df$low
+CT_weather_df$avg_temp <- (CT_weather_df$high + CT_weather_df$low)/2
+  ### For now, the avg will be computed as (high + low temp) divided by 2.
+```
+
+## Question 1: Replication of CT Temperature Map
+
+``` {r, echo=FALSE, fig.width=6, fig.height=6}
+par(mar = c(0,0,0,0))
+
+# Draw Connecticut map only, filled in light gray
+map("state", "connecticut", 
+    xlim = c(-73.25, -71.75), ylim = c(41, 43), 
+    fill = TRUE, col = "gray85", border = "black")
+
+# Get a subset of data to plot (e.g., one day's data)
+CT_weather_df_subset <- CT_weather_df[1:19, ]
+
+# Plot station points with size proportional to avg_temp
+points(CT_weather_df_subset$lon, CT_weather_df_subset$lat,
+       pch = 16, cex = CT_weather_df_subset$avg_temp * 0.075, col = "darkblue")
+
+# Add station names above each point
+text(CT_weather_df_subset$lon, CT_weather_df_subset$lat,
+     pos = 3, labels = CT_weather_df_subset$station_name, cex = 0.4, font = 2)
+```
+
+```{=tex}
+\centering{\red{Question: What can you say about the spatial distribution of temperature over CT?}}
+
+\begin{tcolorbox}
+It is very difficult to make out quite what the example is expressing as there is neither a legend available nor a title to describe the data. I will assume that the size of the dots are meant to represent temperature at different weather stations. We observe higher temperatures towards the Connecticut River Valley (roughly following a line of latitude through Hartford) and along the coast. We observe lower temperatures in the higher elevation, continental data points in the Northwest and Northeast in this map. In my replicate of the plot, I mapped temperature on January 1, 2024. We observe low temperature heterogeneity for that day. 
+\end{tcolorbox}
+```
+
+---
+
+## Question 2: Replication of Daily Mean Temp. Chart
+
+``` {r, echo=FALSE}
+# Define specific ticks for plot
+major_ticks <- as.Date(c("2024-01-01", "2024-02-05", "2024-03-11", "2024-04-15",
+                         "2024-05-20", "2024-06-24", "2024-07-22", "2024-08-26",
+                         "2024-09-30", "2024-11-04", "2024-12-09"))
+major_labels <- c("Jan 01", "Feb 05", "Mar 11", "Apr 15", "May 20", "Jun 24",
+                  "Jul 22", "Aug 26", "Sep 30", "Nov 04", "Dec 09")
+
+# 2. Minor ticks: 4 between each pair of major ticks
+minor_ticks <- c()
+for (i in 1:(length(major_ticks) - 1)) {
+  range_seq <- seq(major_ticks[i], major_ticks[i + 1], length.out = 6)
+  minor_ticks <- c(minor_ticks, range_seq[2:5])
+}
+
+# Ensure date is Date class
+CT_weather_df$date <- as.Date(CT_weather_df$day)
+
+# Get unique station names
+stations <- unique(CT_weather_df$station_name)
+
+# Generate rainbow colors
+colors <- hsv(h = seq(0, 1, length.out = length(stations)), s = 1, v = 0.8)
+
+# Set up plot area with correct date axis
+plot(NA,
+     xlim = as.Date(c("2024-01-01", "2024-12-31")),
+     ylim = range(CT_weather_df$avg_temp, na.rm = TRUE),
+     xlab = "Date", ylab = "Daily Mean Temperature (°F)",
+     main = "CT Stations — Daily Mean Temperature (2024-01-01 to 2024-12-31)",
+     xaxt = "n")  # Suppress default x-axis
+
+# Add gray dotted grid lines
+grid(nx = NA, ny = NULL, col = "gray80", lty = "dotted")
+
+# Use custom x-axis
+axis(side = 1, at = major_ticks, labels = major_labels, las = 1, cex.axis = 0.9)
+
+# Add a line for each station
+for (i in seq_along(stations)) {
+  station_data <- subset(CT_weather_df, station_name == stations[i])
+  lines(station_data$date, station_data$avg_temp, col = colors[i])
+}
+
+# Add transparent legend
+legend("topleft", legend = stations, col = colors, lty = 1, cex = 0.6, ncol = 2,
+       bty = "n")  # Helps align columns
+
+```
+
+```{=tex}
+\centering{\red{Question: What can you say about the spatio-temporal distribution of temperature over CT?}}
+
+\begin{tcolorbox}
+In this plot, it appears as though there is a high level of correlation between different temperature stations in Connecticut. In nearly all instances, temperatures move together between the set of twenty weather monitoring station. In such a small region of interest, we would expect this kind of homogeneity. Upon looking closer, one can observe that there is some recurrence in the highest and lowest temperature regions. Essentially, this means that some locations in Connecticut are relatively consistently warmer or cooler than others. I attempted to use base R to generate a replication of this plot--as it appeared to be constructed in base R--but had some troubles with the finer detials. I hope that this suffices. 
+\end{tcolorbox}
+```
+
+---
+
+## Question 3: Replication of Spatial Correlation of Daily Mean Temps.
+
+``` {r, echo=FALSE, fig.width=5, fig.height=5}
+CT_weather_df$day <- as.Date(CT_weather_df$day)
+# Pivot: rows = day, cols = station, values = avg_temp
+temp_wide <- pivot_wider(
+  CT_weather_df,
+  id_cols = day,
+  names_from = station,
+  values_from = avg_temp
+)
+
+# Drop day column -> numeric matrix
+temp_matrix <- as.matrix(temp_wide[,-1])
+
+# Correlation matrix (decide: "complete.obs" avoids pairwise inconsistencies)
+cor_matrix <- cor(temp_matrix, use = "complete.obs")
+stations <- str_sort(colnames(cor_matrix), numeric = TRUE)
+
+# Reorder the correlation matrix
+cor_matrix <- cor_matrix[stations, stations]
+
+# Melt into long format
+cor_long <- as.data.frame(as.table(cor_matrix))
+names(cor_long) <- c("Station1", "Station2", "Correlation")
+
+# Ensure factors reflect proper order
+cor_long$Station1 <- factor(rev(cor_long$Station1), levels = stations)
+cor_long$Station2 <- factor(rev(cor_long$Station2), levels = rev(stations))
+
+
+# Heatmap with restored formatting
+ggplot(cor_long, aes(x = Station1, y = Station2, fill = Correlation)) +
+  geom_tile() +
+  scale_fill_gradientn(
+    colours = c("navy", "blue", "cyan", "yellowgreen", "red", "maroon4"),
+    values  = scales::rescale(c(0.95, 0.96, 0.97, 0.98, 0.99, 1.00)),
+    limits  = c(0.95, 1),
+    oob     = scales::squish
+  ) +
+  guides(
+    fill = guide_colorbar(
+      title = NULL,
+      barwidth = 0.6,
+      barheight = 25
+    )
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 8),
+    axis.text.y = element_text(size = 8),
+    panel.grid = element_blank()
+  ) +
+  labs(
+    title = "Spatial Correlation of Daily Mean Temperature (2024)",
+    x = NULL, y = NULL
+  )
+```
+
+```{=tex}
+\centering{\red{Question: If Storrs data is missing, which station could give the most reasonable prediction
+for Storrs?}}
+
+\begin{tcolorbox}
+The Storrs weather station is encoded as "CT8138." Looking in the row or column referencing "CT8138," we can identify the highest-correlation weather stations. These appear to be "CTBDR," "CT3451," "CT3456," and "CT0806". These represent Bridgeport Area, Hartford Brainard FLD, Hartford, and Bridgeport's Sikorsky airport, respectively. This is an interesting result, considering that there are some more proximate options for weather station pairs. However, we find that over the course of 2024, Bridgeport and Hartford provided the highest correlation match for temperatures, and therefore they would be very reasonable temperature predictions for Storrs. Note that correlation is very high among all stations, so it would be difficult to make a poor prediction using another CT station. Also, please note slightly different appearnace in correlation matrix due to attempting to match color scaling in extremely narrow range of values. 
+\end{tcolorbox}
+```
+
+---
+
+## Question 4: Replication of Spatial Correlation v. Distance Chart
+
+``` {r, echo=FALSE}
+# --- Question 4: Spatial Correlation vs. Distance (Storrs) ---
+
+library(geosphere) # for distHaversine
+
+# Identify Storrs station code
+storrs_code <- "CT8138"   # replace if your dataset uses a different label
+
+# Wide format of temperatures (already built earlier as temp_wide)
+# temp_wide: first col = day, rest = station codes
+
+# Make sure columns line up with your station codes
+station_codes <- colnames(temp_wide)[-1]
+
+# Get Storrs temp vector
+storrs_temps <- temp_wide[[storrs_code]]
+
+# Compute correlations of Storrs with all stations
+cor_vals <- sapply(station_codes, function(st) {
+  cor(storrs_temps, temp_wide[[st]], use = "pairwise.complete.obs")
+})
+
+# Build dataframe with station metadata
+stations_meta <- CT_weather_df %>%
+  dplyr::select(station_name, station, lat, lon) %>%
+  distinct()
+
+# Extract Storrs lat/lon
+storrs_meta <- stations_meta %>% filter(station == storrs_code)
+
+# Compute distances from Storrs (km)
+stations_meta$distance_km <- distHaversine(
+  matrix(c(storrs_meta$lon, storrs_meta$lat), ncol = 2),
+  matrix(c(stations_meta$lon, stations_meta$lat), ncol = 2)
+) / 1000
+
+# Merge correlation values into metadata
+stations_meta$correlation <- cor_vals[stations_meta$station]
+
+# Drop Storrs itself
+stations_meta <- stations_meta %>% filter(station != storrs_code)
+
+# --- Plot ---
+library(ggplot2)
+
+ggplot(stations_meta, aes(x = distance_km, y = correlation, label = station)) +
+  geom_point(color = "navyblue", size = 3) +
+  geom_text(vjust = -0.8, size = 3) +
+  labs(
+    title = "Spatial Correlation vs. Distance — Storrs",
+    x = "Distance between stations (km)",
+    y = "Correlation of daily mean temperature"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust =0.5,face = "bold"),
+    panel.border = element_rect(color="black", fill=NA, size=1)
+  ) + 
+  scale_x_continuous(limits = c(0, 125))
+```
+
+```{=tex}
+\centering{\red{Question: Can we see the law of geography in effect here?}}
+
+\begin{tcolorbox}
+Based upon Tobler's Law of Geography, we expect distance and correlation of a variable to have an inverse relationship. This relationship is not as clear as we would expect as visualized in this plot. In fact, it would be difficult to justify the claim that this plot gives any indication of the Law of Geography. With some domain knowledge of temperature, we may realize that there could be latent factors affecting the results we see here, like elevation. 
+\end{tcolorbox}
+```
