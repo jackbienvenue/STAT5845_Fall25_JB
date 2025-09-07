@@ -38,24 +38,51 @@ css: "columns.css"
     display: block;
     margin: 0 auto;
   }
+
+  .text-box {
+  background-color: rgba(0,0,0,0.6);
+  padding: 20px;
+  border-radius: 12px;
+  display: inline-block;
+  color: white; 
+}
+
 </style>
 
 <!-- ─── Slide 2: Introduction ─── -->
 
 <section data-auto-animate data-background-image="images/snowy_tree_on_lines.png">
-  <h1 style="text-align: center; color: black;">Problem Background</h1>
 
-  <p style="text-align: left;">Power outages threaten human life, stifle local economies and education, and lead to dangerous conditions. Modern approaches to building outage prediction models (OPMs) use a variety of methods from simple linear regression to ensemble machine learning methods. </p>
+<div style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 10px; 
+              border-radius: 6px; 
+              display: inline-block; 
+              margin-top: 0px;">
+  <h1 style="text-align: center; color: white;">Problem Background</h1>
+  </div>
 
+<div style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 10px; 
+              border-radius: 6px; 
+              display: inline-block; 
+              margin-top: 20px;">
+  <p style="text-align: left; color: lightgray;">Power outages threaten human life, stifle local economies and education, and lead to dangerous conditions. Modern approaches to building outage prediction models (OPMs) use a variety of methods from simple linear regression to ensemble machine learning methods. </p>
+ </div>
 
- <p style="text-align: center;"> <b>My task was to deploy a transparent statistical method for predicting customer outages town-by-town for the state of Connecticut.</b> </p>
+<div style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 10px; 
+              border-radius: 6px; 
+              display: inline-block; 
+              margin-top: 20px;">
+ <p style="text-align: center; color: white;"> <b>My task was to deploy a transparent statistical method for predicting customer outages town-by-town for the state of Connecticut.</b> </p>
+ </div>
 
 </section>
 
 <!-- ─── Slide 3: --------- ─── -->
 
 <section data-auto-animate>
-  <h1 style="margin-top: 15px; color: teal; text-align: center;">Problem Paradigm</h1>
+  <h1 style="margin-top: 15px; color: forestgreen; text-align: center;">Problem Paradigm</h1>
   <p style="text-align: center;"><b>We must focus on extreme observations for Outage Prediction Models (OPMs).</b></p>
   <div class="container">
   <div class="col">
@@ -71,11 +98,30 @@ css: "columns.css"
 <!-- ─── Slide 4: ------ ─── -->
 
 <section data-auto-animate data-background="images/Area_of_Study_map_background.png" data-background-repeat="repeat" data-background-size="300px">
-  <h3 style="color: black; text-align: center; margin-top: 140px;"> <em>How can we organize the effort to predict outages? </em> </h3>
 
+  <div style="background-color: rgba(62, 64, 61, 0.65); 
+              padding: 10px; 
+              border-radius: 6px; 
+              display: inline-block; 
+              margin-top: 20px;">
+  <h3 style="color: black; text-align: center; margin-top: 0px;"> <em>How can we organize the effort to predict outages? </em> </h3>
+  </div>
+
+   <div style="background-color: rgba(62, 64, 61, 0.65); 
+              padding: 10px; 
+              border-radius: 6px; 
+              display: inline-block; 
+              margin-top: 40px;">
   <h3 class="fragment" style="text-align: center;"> By constructing a statistical framework, but...</h3> 
+  </div>
 
-  <h3 class="fragment" style="text-align: center; color: forestgreen; margin-top: 40px;"> Spatial Data Processing is Essential to Begin</h3> 
+<div style="background-color: rgba(62, 64, 61, 0.65); 
+              padding: 38px; 
+              border-radius: 6px; 
+              display: inline-block; 
+              margin-top: 40px;">
+  <h3 class="fragment" style="text-align: center; color: white; margin-top: 0px;">   Spatial Data Processing is Essential to Begin</h3> 
+  </div>
 </section>
 
 <!-- ─── Slide 5: ------ ─── -->
@@ -117,16 +163,16 @@ css: "columns.css"
 
 <section data-auto-animate>
   <h3 style="text-align: center; margin-top: 0px;"> Expression as a Lattice </h3> 
-  <p style="text-align: center;"> We create areas, assuming regularity in measurement: </p>
+  <p style="text-align: center;"> 2D visual of interpolated geostatistical data: </p>
 <div style="text-align: center;">
   <iframe
     src="embed/shapefile_build.html"
     width="85%"
-    height="450"
+    height="425"
     style="border: none;">
   </iframe>
 </div>
-  <h3 style="text-align: center;"> Still, an issue remains </h3>
+  <h3 style="text-align: center;"> Still, an Issue Remains </h3>
 </section>
 
 <!-- Slide 8: ───  ─── -->
@@ -141,168 +187,146 @@ css: "columns.css"
 
 <!-- Slide 9: ───  ─── -->
 
-<section data-auto-animate data-background="images/tree_falling.gif" data-background-repeat="repeat" data-background-size="550px">
-  <h1 style="text-align: center; color: white; margin-top:75px"> Back to Outages </h1>
-  <h3 class="fragment" style="text-align: center; margin-top: 40px; color: white"> How to record outages </h3>
+<section data-auto-animate 
+         data-background="images/tree_falling.gif" 
+         data-background-repeat="repeat" 
+         data-background-size="550px">
+
+  <div style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 20px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              margin-top: 75px;">
+
+ <h1 style="text-align: center; color: white; margin: 0;">Back to Outages</h1>
+  </div>
+
+  <div class="fragment" 
+       style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 15px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              margin-top: 40px;">
+
+<h3 style="text-align: center; color: white; margin: 0;">How do we represent a storm for modeling?</h3>
+  </div>
+
 </section>
 
+
+---
+
+## Predictor Variable Selection
+
+We define a standard selection method of covariates, seeking representative data that captures the most outage-relevant information from a storm.
+
+\begin{equation}
+\label{eq:precip_intensity_window_selection}
+\text{Precipitation Intensity} := I_{\text{max}} = \max_{t = 0,\dots,24} \left( \frac{1}{24} \sum_{i=0}^{23} I_{t+i} \right)
+\end{equation}
+
+\begin{equation}
+\label{eq:wind_velocity_window_selection}
+\text{Wind Velocity} := W_{\text{max}} = \max_{t = 0,\dots,24} \left( \frac{1}{24} \sum_{i=0}^{23} W_{t+i} \right)
+\end{equation}
+
+Here, we maximize a 24-hr average over a moving window.
+
+---
+
+<!-- Slide 11: ───  ─── -->
 <section data-auto-animate>
-  <h3 style="text-align: center; margin-top: 10px"> What changed since last presentation? </h3>
-  <h2 class="fragment" style ="color:teal;"> Random Sampling Technique </h2>
-  <p class="fragment"> Property sample size increased from $30,000$ to $100,000$. </p>
+  <h3 style="text-align: center; margin-top: 10px"> Capturing Extreme Events</h3>
+  <h2 class="fragment" style ="color:forestgreen;"> A Standard Normal Transformation </h2>
+  <p class="fragment"> Without parameterizing the distributions for covariates, we can still identify extreme events. </p>
   <ul>
-    <li class="fragment">Very large sample is drawn at random,</li>
-    <li class="fragment" style="color: gray">3,000+ samples are drawn randomly within each year...</li>
-    <li class="fragment">but year-to-year balancing is employed to prevent sparsity</li>
+    <li class="fragment"> Sort covariates (e.g. $W_{asc} = W_{(1)}, W_{(2)}, \dots, W_{(n)}$)</li>
+    <li class="fragment" style="color: gray">Construct Empirical Cumulative Distribution Function, quantiles</li>
+    <li class="fragment">Use inverse normal CDF transformation ($\Phi^{-1}$) to z-score data (NOTE: Preserve mapping function!) </li>
   </ul>
+  <h2 style="color: white;">
+  Best Linear Unbiased Estimation (<span style="color: white;">BLUE</span>) Model:
+</h2>
 </section>
 
-<!-- Slide 10: ───  ─── -->
+<!-- Slide 12: ───  ─── -->
+<section data-auto-animate>
+ <h2 style="color: black;">
+  Best Linear Unbiased Estimation (<span style="color: blue;">BLUE</span>) Model:
+</h2>
 
-## Stationarity Assumptions:
-
-Include image of covariance maps here. Note that for center plot there's a point to be made about how this chart may be "blind" to temperature localized covariances.
-
-##
-
-## Random Sampling Technique:
-
-::: {.v-center-container}
-![](images/annual_distribution_of_data.png)
-
-Sampling technique becomes:
+<p>
+$$
+\widehat{\underline{X_1}}\left(\underline{x_2}\right) = m_{X_1} + \underline{\underline{\Sigma^{\phantom{a}}_{X_1X_2}}} \times \underline{\underline{\Sigma^{-1}_{X_2X_2}}}\left(\smash{\underline{\underline{x_2}}} - \underline{m_{X_2}}\phantom{A}\right),
 $$ 
-n_\text{year} = \frac{n}{28},
-$$
-where 28 is the range of years in the study.
-:::
-
-##
-
-<section>
-  <h2>Imbalance Observation:</h2>
-  <p style="color:teal"> <b> Despite coastal residency rate of ~40%, empirically: </b></p>
-  <ul>
-    <li class="fragment">~75% of entries were non-coastal</li>
-    <li class="fragment" style="color: gray">~25% of entries were coastal</li>
-  </ul>
-
-  <p class="fragment" style="color:teal"><b><em>Why?</em> Not clear. Perhaps:</b></p>
-  <ul>
-    <li class="fragment">Coastal urbanization means more rentals, fewer home sales per capita</li>
-    <li class="fragment" style="color: gray">Coastal homeowners tend to hold their homes more often</li>
-  </ul>
-</section>
-
-## Random Sampling Implication:
-
-Amendments to the random sampling technique allow us to expect:
-
-$$
-n_\text{year, coastal} \approx \frac{100000}{28}*\frac{1}{4} \approx 900, \text{and}
-$$
-
-$$
-n_\text{year, inland} \approx \frac{100000}{28}*\frac{3}{4} \approx 2700,
-$$
-
-Still satisfactory for this analysis. 
-
-##
-
-<section data-auto-animate>
-
-<h2>Geocoding Mechanism</h2>
-
-<div style="text-align: center;">
-  <img src="images/Weather_Data_Assignment_Figure.png" style="max-width: 60%; margin: 10px;">
-</div>
-
-<p class="fragment">But before you try your own geocoding project...</p>
-
-<h2 class="fragment" style="color: teal;" >Word of Caution — Google Cloud</h2>
-
-</section>
-
-<section data-auto-animate>
-  <h2>Word of Caution — Google Cloud</h2>
-
-  <div style="text-align: center;" class="fragment fade-in-then-semi-out">
-  <img src="images/Weather_Data_Assignment_Figure.png" alt="Google Cloud Console Screenshot" style="max-width: 60%; margin: 10px;">
-  <img src="images/Weather_Data_Assignment_Figure.png" alt="Google Cloud Billing Screenshot" style="max-width: 60%; margin: 10px;">
-</div>
-
-  <p style="margin-top: 20px; font-weight: bold; color: red; text-align: center;" class="fragment grow">
-    I made this mistake, don't do the same!
-  </p>
-
-  <h2 style="margin-top: 10px; text-align: center; color: teal" class="fragment"> Now, let's test hypotheses!</h2>
-</section>
-
-<section data-auto-animate>
-  <h2 style="text-align: center;"> Now, let's test hypotheses!</h2>
-
-<p style="color:silver; text-align: center;">$H_0$: The <b>difference</b> in the <b>average monthly rate of change</b> of home valuations between coastal and non-coastal counties is <b>zero</b>, versus</p>
-
-<p style="color:olive; text-align: center;">$H_1$: The <b>difference</b> in the <b>average monthly rate of change</b> of valuations between coastal and non-coastal counties is <b>not zero</b>,</p>
-
-<p> With $α = 0.05$ as our significance level. Alternatively,</p>
-
-<p style="color:silver; text-align: center;"> $H_0: \mu_{\Delta \bar{V}_{\text{month, coastal}}}$ -
-$\mu_{\Delta \bar{V}_{\text{month, inland}}}$ = 0, vs.
- </p>
-
-<p style="color:olive; text-align: center;"> $H_1: \mu_{\Delta \bar{V}_{\text{month, coastal}}}$ -
-$\mu_{\Delta \bar{V}_{\text{month, inland}}} \neq 0.$
- </p>
-</section>
-
-<section data-auto-animate>
-<h2 style="color: teal; text-align: center; margin-top: 10px;">Now, let's test hypotheses!</h2>
-
-<h2 style="text-align: center; margin-top: 10px;" class="fragment">What do we find?</h2>
-
-<p class="fragment"> No evidence to suggest that the month-over-month rate of change for property values differs on average for coastal and inland properties (1996-2024, $p = 0.182$) </p>
-
-<h2 style="text-align: center; margin-top: 10px; color: teal;" class="fragment"> Implications? </h2>
-</section>
-
-<section data-auto-animate>
-<h2 style="text-align: center;"> Implications? </h2>
-
-<p class="fragment"> Coastal property risks are either not priced in, and/or other market forces are muting the effects of priced climate risks. </p>
-
-<h2 style="text-align: center; color: teal;" class="fragment"> Are we suprised? </h2>
-
-</section>
-
-<section data-auto-animate>
-<h2 style="text-align: center;"> Are we suprised? </h2>
-
-<div style="text-align: center;" class="fragment">
-  <img src="images/Weather_Data_Assignment_Figure.png" alt="Google Cloud Console Screenshot" style="max-width: 70%; margin: 10px;">
-</div>
-
-
-<h2 style="text-align: center; color: teal;" class="fragment"> The Bottom Line </h2>
-</section>
-
-<section data-auto-animate>
-<h2 style="text-align: center;"> The Bottom Line </h2>
-
-<p style="text-align: center;" class="fragment"> While our results conflict with a claim that served as a basis for the paper mentioned...</p>
-
-<p class="fragment" style="text-align: center;">
-  <span class="fragment highlight-red" style="font-weight: bold;">
-    We have reason to believe that market forces <em>are</em> delaying climatic risk-related coastal property depreciation
-  </span>
 </p>
 
-<div style="text-align: center;" class="fragment">
-  <img src="images/Weather_Data_Assignment_Figure.png" style="max-width: 45%; margin: 10px;">
-</div>
+<p>For every town, we use our **normalized** predictors and **normalized** outage counts, to use leave-one-out cross validation (LOOCV) to assess model accuracy. </p>
+
+<p>NOTE: The (<span style="color: blue;">BLUE</span>) model predicts the z-score of outage counts.</p>
+
+<div class="fragment">
+ <h2 style="text-align:center;">LOOCV Review</h2>
+ </div>
+</section>
+
+<!-- Slide 13: ───  ─── -->
+<section data-auto-animate>
+  <h2 style="text-align: center; margin-top: 0px;"> LOOCV Review </h2> 
+  <p style="text-align: center;"> LOOCV is an extreme of k-folds cross validation. It works by:</p>
+  <ol>
+    <li>Fitting model using $n-1$ data points.</li>
+    <li>Predicting target variable</li>
+    <li>Computing error statistic</li>
+    <li>Repeat for all $i$, $i \in \{1...,n\}$, aggregating errors </li>
+  </ol>
+  <h3 style="text-align: center"> Scale Matters Here </h3>
+</section>
+
+<!-- Slide 14: ───  ─── -->
+<section data-auto-animate>
+    <h3 style="text-align: center; color:forestgreen"> Scale Matters Here </h3>
+  <h2 style="text-align: center; margin-top: 0px;"> Translation back to Outage Counts </h2> 
+  <p style="text-align: center;"> Remember normalizing our data using $\Phi^{-1}$? We are still in the Gaussian space and must transform back to the "time domain" (original scale) for LOOCV. The ECDF helps us do this.</p>
+  <h3 style="text-align: center;"> We've created a non-parametric approach to predicting storm outages </h3>
+</section>
+
+<!-- Slide 15: ───  ─── -->
+<section data-auto-animate>
+    <h3 style="text-align: center;"> We've created a non-parametric approach to predicting storm outages </h3>
+  
+  <ul>
+    <li> No assumptions on distribution of weather & outage data --> generalizable to any area,
+    </li>
+    <li> Allows relevant spatial partitioning of models, </li>
+    <li> Achieves similar accuracy to more complex models with fewer inputs required and modest computation</li>
+  </ul>
+</section>
+
+<!-- Slide (final): ───  ─── -->
+<section data-background="images/conclusion.gif" data-background-repeat="repeat" data-background-size="400px">
+  <div
+       style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 50px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              margin-top: 40px;">
+
+<h1 style="text-align: center; color: white; margin: 0;">Thank you!</h1>
+  </div>
+
+  <div class="fragment" 
+       style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 50px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              margin-top: 40px;">
+
+<h2 style="text-align: center; color: white; margin: 0;">Any Questions?</h2>
+  </div>
 
 </section>
+
 
 ## Scholarly References
 
@@ -318,15 +342,6 @@ $\mu_{\Delta \bar{V}_{\text{month, inland}}} \neq 0.$
   </li>
 </ol>
 
-
 ## Image & Article Credits {.scrollable}
 
 - Slide 2 - Pine on power lines, Eversource via FOX61 News (https://www.fox61.com/article/news/local/outreach/awareness-months/crews-busy-as-trees-fall-on-powerlines-across-the-state/520-f1f1a672-f77e-40ed-9ba4-8d3e8aec8b89)
-- 
-
-## Thank you!
-
-Good luck on jobs, continuing education, or other upcoming pursuits! Have an awesome summer.
-<br><br>
-<br><br>
-<h2 style="text-align: center;"> **Any questions?** </h2>

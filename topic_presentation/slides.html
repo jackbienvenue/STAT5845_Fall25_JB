@@ -372,30 +372,30 @@
 </style>
 <!-- ─── Slide 2: Introduction ─── -->
 <section data-auto-animate="" data-background-image="images/snowy_tree_on_lines.png">
-<div style="background-color: rgba(67, 95, 52, 0.4); 
+<div style="background-color: rgba(0, 0, 0, 0.6); 
               padding: 10px; 
               border-radius: 6px; 
               display: inline-block; 
               margin-top: 0px;">
-<h1 style="text-align: center; color: black;">
+<h1 style="text-align: center; color: white;">
 Problem Background
 </h1>
 </div>
-<div style="background-color: rgba(55, 93, 35, 0.4); 
+<div style="background-color: rgba(0, 0, 0, 0.6); 
               padding: 10px; 
               border-radius: 6px; 
               display: inline-block; 
               margin-top: 20px;">
-<p style="text-align: left;">
+<p style="text-align: left; color: lightgray;">
 Power outages threaten human life, stifle local economies and education, and lead to dangerous conditions. Modern approaches to building outage prediction models (OPMs) use a variety of methods from simple linear regression to ensemble machine learning methods.
 </p>
 </div>
-<div style="background-color: rgba(55, 93, 35, 0.4); 
+<div style="background-color: rgba(0, 0, 0, 0.6); 
               padding: 10px; 
               border-radius: 6px; 
               display: inline-block; 
               margin-top: 20px;">
-<p style="text-align: center;">
+<p style="text-align: center; color: white;">
 <b>My task was to deploy a transparent statistical method for predicting customer outages town-by-town for the state of Connecticut.</b>
 </p>
 </div>
@@ -500,7 +500,7 @@ Expression as a Lattice
 2D visual of interpolated geostatistical data:
 </p>
 <div style="text-align: center;">
-<p><iframe src="embed/shapefile_build.html" width="85%" height="450" style="border: none;"> </iframe></p>
+<p><iframe src="embed/shapefile_build.html" width="85%" height="425" style="border: none;"> </iframe></p>
 </div>
 <h3 style="text-align: center;">
 Still, an Issue Remains
@@ -555,6 +555,7 @@ How do we represent a storm for modeling?
 </section>
 <section class="slide level2">
 
+<!-- Slide 11: ───  ─── -->
 <section data-auto-animate="">
 <h3 style="text-align: center; margin-top: 10px">
 Capturing Extreme Events
@@ -576,38 +577,111 @@ Construct Empirical Cumulative Distribution Function, quantiles
 Use inverse normal CDF transformation (<span class="math inline">\(\Phi^{-1}\)</span>) to z-score data (NOTE: Preserve mapping function!)
 </li>
 </ul>
+<h2 style="color: white;">
+Best Linear Unbiased Estimation (<span style="color: white;">BLUE</span>) Model:
+</h2>
 </section>
+<!-- Slide 12: ───  ─── -->
 <section data-auto-animate="">
-<h3 style="text-align: center; margin-top: 10px">
-</h3>
-</section>
-</section>
-<section id="best-linear-unbiased-estimation-blue-model" class="slide level2">
-<h2>Best Linear Unbiased Estimation (BLUE) Model:</h2>
-<p><span class="math display">\[
+<h2 style="color: black;">
+Best Linear Unbiased Estimation (<span style="color: blue;">BLUE</span>) Model:
+</h2>
+<p>
+<span class="math display">\[
 \widehat{\underline{X_1}}\left(\underline{x_2}\right) = m_{X_1} + \underline{\underline{\Sigma^{\phantom{a}}_{X_1X_2}}} \times \underline{\underline{\Sigma^{-1}_{X_2X_2}}}\left(\smash{\underline{\underline{x_2}}} - \underline{m_{X_2}}\phantom{A}\right),
-\]</span></p>
-<p>For every town, we use our <strong>normalized</strong> predictors and <strong>normalized</strong> outage counts, to use leave-one-out cross validation (LOOCV) to assess model accuracy.</p>
-</section>
-<section class="slide level2">
-
-<section data-auto-animate="">
-<h3 style="text-align: center; margin-top: 0px;">
-LOOCV Review
-</h3>
-<p style="text-align: center;">
-hi
+\]</span>
 </p>
-</section></section></div>
-<h3 style="text-align: center;">
-transition
+<p>
+For every town, we use our <strong>normalized</strong> predictors and <strong>normalized</strong> outage counts, to use leave-one-out cross validation (LOOCV) to assess model accuracy.
+</p>
+<p>
+NOTE: The (<span style="color: blue;">BLUE</span>) model predicts the z-score of outage counts.
+</p>
+<div class="fragment">
+<h2 style="text-align:center;">
+LOOCV Review
+</h2>
+</div>
+</section>
+<!-- Slide 13: ───  ─── -->
+<section data-auto-animate="">
+<h2 style="text-align: center; margin-top: 0px;">
+LOOCV Review
+</h2>
+<p style="text-align: center;">
+LOOCV is an extreme of k-folds cross validation. It works by:
+</p>
+<ol>
+<li>
+Fitting model using <span class="math inline">\(n-1\)</span> data points.
+</li>
+<li>
+Predicting target variable
+</li>
+<li>
+Computing error statistic
+</li>
+<li>
+Repeat for all <span class="math inline">\(i\)</span>, <span class="math inline">\(i \in \{1...,n\}\)</span>, aggregating errors
+</li>
+</ol>
+<h3 style="text-align: center">
+Scale Matters Here
 </h3>
-
-<!-- Slide 10: ───  ─── -->
-
-<section id="stationarity-assumptions" class="slide level2">
-<h2>Stationarity Assumptions:</h2>
-<p>Include image of covariance maps here. Note that for center plot there’s a point to be made about how this chart may be “blind” to temperature localized covariances.</p>
+</section>
+<!-- Slide 14: ───  ─── -->
+<section data-auto-animate="">
+<h3 style="text-align: center; color:forestgreen">
+Scale Matters Here
+</h3>
+<h2 style="text-align: center; margin-top: 0px;">
+Translation back to Outage Counts
+</h2>
+<p style="text-align: center;">
+Remember normalizing our data using <span class="math inline">\(\Phi^{-1}\)</span>? We are still in the Gaussian space and must transform back to the “time domain” (original scale) for LOOCV. The ECDF helps us do this.
+</p>
+<h3 style="text-align: center;">
+We’ve created a non-parametric approach to predicting storm outages
+</h3>
+</section>
+<!-- Slide 15: ───  ─── -->
+<section data-auto-animate="">
+<h3 style="text-align: center;">
+We’ve created a non-parametric approach to predicting storm outages
+</h3>
+<ul>
+<li>
+No assumptions on distribution of weather &amp; outage data –&gt; generalizable to any area,
+</li>
+<li>
+Allows relevant spatial partitioning of models,
+</li>
+<li>
+Achieves similar accuracy to more complex models with fewer inputs required and modest computation
+</li>
+</ul>
+</section>
+<!-- Slide (final): ───  ─── -->
+<section data-background="images/conclusion.gif" data-background-repeat="repeat" data-background-size="400px">
+<div style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 50px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              margin-top: 40px;">
+<h1 style="text-align: center; color: white; margin: 0;">
+Thank you!
+</h1>
+</div>
+<div class="fragment" style="background-color: rgba(0, 0, 0, 0.6); 
+              padding: 50px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              margin-top: 40px;">
+<h2 style="text-align: center; color: white; margin: 0;">
+Any Questions?
+</h2>
+</div>
+</section>
 </section>
 <section id="scholarly-references" class="slide level2">
 <h2>Scholarly References</h2>
@@ -624,15 +698,7 @@ Rapach, D. E., &amp; Strauss, J. K. (2009). <i>Differences in housing price fore
 <h2>Image &amp; Article Credits</h2>
 <ul>
 <li>Slide 2 - Pine on power lines, Eversource via FOX61 News (https://www.fox61.com/article/news/local/outreach/awareness-months/crews-busy-as-trees-fall-on-powerlines-across-the-state/520-f1f1a672-f77e-40ed-9ba4-8d3e8aec8b89)</li>
-<li></li>
 </ul>
-</section>
-<section id="thank-you" class="slide level2">
-<h2>Thank you!</h2>
-Good luck on jobs, continuing education, or other upcoming pursuits! Have an awesome summer. <br><br> <br><br>
-<h2 style="text-align: center;">
-<strong>Any questions?</strong>
-</h2>
 <div class="quarto-auto-generated-content">
 <div class="footer footer-default">
 <p>Jack Bienvenue | STAT5845</p>
@@ -640,7 +706,7 @@ Good luck on jobs, continuing education, or other upcoming pursuits! Have an awe
 </div>
 </section>
     </div>
-  
+  </div>
 
   <script>window.backupDefine = window.define; window.define = undefined;</script>
   <script src="slides_files/libs/revealjs/dist/reveal.js"></script>
