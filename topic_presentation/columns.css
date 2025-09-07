@@ -36,3 +36,10 @@
   display: block;
   margin: 1em auto;
 }
+
+.text-box {
+  background-color: rgba(0,0,0,0.6);
+  padding: 20px;
+  border-radius: 12px;
+  display: inline-block;
+}
