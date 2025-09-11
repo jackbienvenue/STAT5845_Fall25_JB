@@ -1,0 +1,74 @@
+---
+title: "Homework 3 - 2018 Housing Prices in CT"
+author: Jack Bienvenue
+date: 12 September 2025
+format: pdf
+header-includes:
+  - \usepackage{tcolorbox}
+  - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
+  - \usepackage{xcolor}
+  - \newcommand{\red}[1]{\textcolor{red}{#1}}
+---
+
+# Task 1: Replicating CT Home Value Map
+
+```{r}
+# Package import
+invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
+                                                     "gstat", "sf", 
+                                                     "RColorBrewer"), 
+                                            require, character.only = TRUE))))
+# Data import
+## Median home values for CT towns
+med_home_ct18_df <- read.csv("./data/median-home-value0town-2018.csv")
+## CT towns (I am importing from my own shapefile I produced in the past)
+ct_shp<- st_read("./data/ct_towns/ct_towns.shp")
+
+# Inspect shapefile
+
+```
+
+```{r}
+
+```
+
+
+
+```{=tex}
+\centering{\red{Question: What can you say about the home values in CT?}}
+
+\begin{tcolorbox}
+I
+\end{tcolorbox}
+```
+
+# Task 2: Replicating Moran's I Scatterplot
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: What can you say about the spatial autocorrelation of home values in CT?}}
+
+\begin{tcolorbox}
+I
+\end{tcolorbox}
+```
+
+# Task 3: Replacing Spatial Clustering Map
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: What can you say about the spatial clustering of housing prices in CT? Why do
+High–High clusters appear in the southwest part of the state?}}
+
+\begin{tcolorbox}
+The clustering as shown illuminates the fact that some towns of Southwestern Connecticut---in particular, a subset of Fairfield County's towns---have high average home values, and their neighboring towns do as well.
+
+We notice an absence of the other cluster types.
+\end{tcolorbox}
+```
