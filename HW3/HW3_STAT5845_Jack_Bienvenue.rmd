@@ -15,8 +15,8 @@ header-includes:
 ```{r}
 # Package import
 invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
-                                                     "gstat", "sf", 
-                                                     "RColorBrewer"), 
+                                                     "gstat", "sf", "dplyr", 
+                                                     "tidyr", "RColorBrewer"), 
                                             require, character.only = TRUE))))
 # Data import
 ## Median home values for CT towns
@@ -48,12 +48,12 @@ To replicate the plot for Task 1, we will have to start by obtaining Z-scores fo
 med_home_ct18_df$med_home_val_z_score <- scale(med_home_ct18_df$Value)
 
 # Merge data
-ct_med_home_18_geom <- merge(ct_shp, med_home_ct18_df, 
+ct_merged_shp <- merge(ct_shp, med_home_ct18_df, 
                    by.x = "TOWN_NAME", 
                    by.y = "Town", 
                    all.x = TRUE)
 # Build map 
-ggplot(data = ct_med_home_18_geom) +
+ggplot(data = ct_merged_shp) +
   # Fill each tract polygon by its standardized incidence
   geom_sf(aes(fill = med_home_val_z_score)) +
   # Diverging color scale: red = above average, blue = below average
@@ -77,17 +77,55 @@ We can see easily in our map that there is a concentration of high median home v
 
 # Task 2: Replicating Moran's I Scatterplot
 
+Replicating this plot takes a little bit more behind-the-scenes magic. Specifically---we run into a problem with the fact that Connecticut's geometries for its towns in the shapefiles I used are *multipolygons*. These multipolygons are used in Connecticut specifically to include outlying islands that belong to Connecticut towns. Below, see how we must implement a method to remove these islands for proper neighbor-matching to get an accurate Moran's I scatterplot.
+
 ```{r}
+#---------Data Cleaning for Moran's I Procedure--------------#
+
 # Shared boundary condition for neighbors definition
 ## To let poly2nb work, we have to convert our sf object to a sp object:
-ct_med_home_18_geom <- as(ct_med_home_18_geom, "Spatial")
-ct_towns_nb <- poly2nb(ct_med_home_18_geom)
+ct_merged_shp_sp <- as(ct_merged_shp, "Spatial")
+ct_towns_nb <- poly2nb(ct_merged_shp_sp)
+
+# NOTE on multiploygons and polynb: islands become an issue:
+plot(ct_merged_shp_sp, border = 'lightgray', main = "CT Town Neighbors")
+plot(ct_towns_nb, coordinates(ct_merged_shp_sp), add = TRUE, col = "blue", 
+                                                    pch = 20, cex = 0.6)
+
+# So, let's convert multipolygon town geometries to polygon geometries,
+# by selecting the largest landmass from each town (this logic is sound for
+# CT, but may not work universally)
+
+## Destroy multipolygon geometry, separating multipolygons into polygons:
+ct_exploded <- ct_merged_shp %>%
+  st_cast("POLYGON") %>%                    # Cast to single polygons
+  mutate(poly_area = st_area(geometry))    # Calculate area of each polygon
+
+##  Selection of largest polygon to take crown as the official town polygon
+ct_merged_shp_mainlands <- ct_exploded %>%
+  group_by(TOWN_NAME) %>%
+  slice_max(poly_area, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(-poly_area)
+
+# Now, let's see our new neighbor matching scheme for CT towns:
+ct_merged_shp_mainlands <- as(ct_merged_shp_mainlands, "Spatial")
+ct_towns_nb_mainlands <- poly2nb(ct_merged_shp_mainlands, queen = TRUE)
+plot(ct_merged_shp_mainlands, border = 'lightgray', main = "CT Town Neighbors")
+plot(ct_towns_nb_mainlands, coordinates(ct_merged_shp_mainlands), 
+     add = TRUE, col = "blue", pch = 20, cex = 0.6)
+```
+
+
+
+```{r}
+#---------Assigning Neighbor Weights, Plotting Procedure-----------#
 
 # 1) Row-standardized neighbor weights (neighbors sum to 1 for each tract)
-W_ct_towns <- nb2listw(ct_towns_nb, style = "W", zero.policy = TRUE)
+W_ct_towns <- nb2listw(ct_towns_nb_mainlands, style = "W", zero.policy = TRUE)
 
 # 2) Spatial lag = neighbor average of Z (using the standardized values)
-z      <- ct_med_home_18_geom$med_home_val_z_score
+z      <- ct_merged_shp_mainlands$med_home_val_z_score
 lag_z  <- lag.listw(W_ct_towns, z, zero.policy = TRUE)
 
 # 3) Global index (slope) for reference
@@ -121,7 +159,7 @@ legend("topleft",
 \centering{\red{Question: What can you say about the spatial autocorrelation of home values in CT?}}
 
 \begin{tcolorbox}
-I
+After some important spatial manipulation to the data to remove islands, we are able to obtain an accurate scatterplot of the average Z-scores of a town's neighbors to its own Z-score for median home value in the set of Connecticut towns. With a Moran's I of 0.522, we see that neighboring towns' median home value fluctuates together in a fairly strong manner. This is indicative of clustering of similar values for median home value. On the ground, when combined with our map, this tells us that there are likely some different economic enclaves (groups of towns with different wealth concentration levels) in the state.
 \end{tcolorbox}
 ```
 
@@ -131,28 +169,51 @@ I
 ## --- Local clusters: Where are the highs and lows? (LISA) -------------------
 
 # 1) Standardize the variable and compute its spatial lag (neighbor average)
-lag_z <- lag.listw(W_ct_towns, med_home_val_z_score, zero.policy = TRUE)
+z <- as.numeric(ct_merged_shp_mainlands$med_home_val_z_score)
+lag_z <- lag.listw(W_ct_towns, z, zero.policy = TRUE)
 
 # 2) Local Moran’s I for each tract (tests local clustering/outliers)
-lisa <- localmoran(med_home_val_z_score, W_ct_towns, zero.policy = TRUE)
+lisa <- localmoran(z, W_ct_towns, zero.policy = TRUE)
 
 # 3) Attach key outputs back to the map for plotting
-med_home_ct18_df$Ii      <- lisa[, "Ii"]                                 # local I statistic
-p_col        <- grep("^Pr\\(", colnames(lisa), value = TRUE)        # robust p-value column
-med_home_ct18_df$Ii_p    <- lisa[, p_col]                                        # pseudo p-value
-med_home_ct18_df$Z_std   <- z_std
-med_home_ct18_df$lag_std <- lag_z
+ct_merged_shp_mainlands$Ii <- lisa[, "Ii"]                         # local I statistic
+p_col <- grep("^Pr\\(", colnames(lisa), value = TRUE) # robust p-val col
+ct_merged_shp_mainlands$Ii_p    <- lisa[, p_col]                    # pseudo p-value
+ct_merged_shp_mainlands$med_home_val_z_score <- z
+ct_merged_shp_mainlands$lag_std <- lag_z           #lag_std
 
 # 4) Classify each tract into LISA quadrants (α = 0.05)
 alpha <- 0.05
-med_home_ct18_df$quad <- "Not sig."
-med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std >= 0 &  med_home_ct18_df$lag_std >= 0] <- "High-High"
-med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std <= 0 &  med_home_ct18_df$lag_std <= 0] <- "Low-Low"
-med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std >= 0 &  med_home_ct18_df$lag_std <= 0] <- "High-Low"
-med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std <= 0 &  med_home_ct18_df$lag_std >= 0] <- "Low-High"
+ct_merged_shp_mainlands$quad <- "Not sig."
+
+ct_merged_shp_mainlands$quad[
+  ct_merged_shp_mainlands$Ii_p <= alpha &
+  ct_merged_shp_mainlands$med_home_val_z_score >= 0 &
+  ct_merged_shp_mainlands$lag_std >= 0
+] <- "High-High"
+
+ct_merged_shp_mainlands$quad[
+  ct_merged_shp_mainlands$Ii_p <= alpha &
+  ct_merged_shp_mainlands$med_home_val_z_score <= 0 &
+  ct_merged_shp_mainlands$lag_std <= 0
+] <- "Low-Low"
+
+ct_merged_shp_mainlands$quad[
+  ct_merged_shp_mainlands$Ii_p <= alpha &
+  ct_merged_shp_mainlands$med_home_val_z_score >= 0 &
+  ct_merged_shp_mainlands$lag_std <= 0
+] <- "High-Low"
+
+ct_merged_shp_mainlands$quad[
+  ct_merged_shp_mainlands$Ii_p <= alpha &
+  ct_merged_shp_mainlands$med_home_val_z_score <= 0 &
+  ct_merged_shp_mainlands$lag_std >= 0
+] <- "Low-High"
+
+print(ct_merged_shp_mainlands$quad)
 
 # 5) Plot: LISA cluster map (hot/cold clusters and spatial outliers)
-p_lisa <- ggplot(med_home_ct18_df) +
+p_lisa <- ggplot(ct_merged_shp_mainlands) +
   geom_sf(aes(fill = factor(quad)), color = "grey70", size = 0.2) +
   scale_fill_manual(
     name   = "LISA quadrant (α = 0.05)",
