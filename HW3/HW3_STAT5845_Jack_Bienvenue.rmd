@@ -1,8 +1,10 @@
 ---
 title: "Homework 3 - 2018 Housing Prices in CT"
-author: Jack Bienvenue
-date: 12 September 2025
-format: pdf
+author: "Jack Bienvenue"
+date: "12 September 2025"
+output: 
+  pdf_document:
+    latex_engine: xelatex
 header-includes:
   - \usepackage{tcolorbox}
   - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
@@ -10,9 +12,8 @@ header-includes:
   - \newcommand{\red}[1]{\textcolor{red}{#1}}
 ---
 
-# Task 1: Replicating CT Home Value Map
-
-```{r}
+```{r, echo=FALSE}
+#---------------PRELIMINARIES-----------------
 # Package import
 invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
                                                      "gstat", "sf", "dplyr", 
@@ -22,18 +23,13 @@ invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
 ## Median home values for CT towns
 med_home_ct18_df <- read.csv("./data/median-home-value-town-2018.csv")
 ## CT towns (I am importing from my own shapefile I produced in the past)
-ct_shp<- st_read("./data/ct_towns/ct_towns.shp")
+ct_shp<- st_read("./data/ct_towns/ct_towns.shp", quiet = TRUE)
 
-# Inspect shapefile
-
-```
-Let's start preparing for our analysis by cleaning our data.
-
-```{r}
-# Ensure only Connecticut's towns are included for the shapefile
+# Data Cleaning
+## Ensure only Connecticut's towns are included for the shapefile
 ct_shp = ct_shp[ct_shp$CT_LEGEND == "Connecticut", ]
 
-# Ensure only relevant data is present in our home value dataframe:
+## Ensure only relevant data is present in our home value dataframe:
 med_home_ct18_df = (
   med_home_ct18_df[med_home_ct18_df$Variable == "Median Home Value" &
                      med_home_ct18_df$Year == "2014-2018" &
@@ -41,9 +37,11 @@ med_home_ct18_df = (
 )
 ```
 
-To replicate the plot for Task 1, we will have to start by obtaining Z-scores for the median home value of each town. After that, we will merge the data sets. At last we will reproduce the map.
+# Task 1: Replicating CT Home Value Map
 
-```{r}
+To replicate the plot for Task 1, we will have to start by obtaining Z-scores for the median home value of each town. After that, we will merge the data sets. At last we will reproduce the map, which we can view below:
+
+``` {r, echo=FALSE}
 # Create Z-score column
 med_home_ct18_df$med_home_val_z_score <- scale(med_home_ct18_df$Value)
 
@@ -54,13 +52,13 @@ ct_merged_shp <- merge(ct_shp, med_home_ct18_df,
                    all.x = TRUE)
 # Build map 
 ggplot(data = ct_merged_shp) +
-  # Fill each tract polygon by its standardized incidence
+## Fill each tract polygon by its standardized incidence
   geom_sf(aes(fill = med_home_val_z_score)) +
-  # Diverging color scale: red = above average, blue = below average
+## Diverging color scale: red = above average, blue = below average
   scale_fill_gradient2(low = "blue", mid = "white", high = "red",
                        midpoint = 0,
                        name = "Standardized Z") +
-  # Add labels
+## Add labels
   labs(title = "Standardized Median Home Value (Z-scores)",
        subtitle = "Z = 0 is the statewide average; red = above, blue = below") +
   theme_minimal()
@@ -71,35 +69,41 @@ ggplot(data = ct_merged_shp) +
 \centering{\red{Question: What can you say about the home values in CT?}}
 
 \begin{tcolorbox}
-We can see easily in our map that there is a concentration of high median home values for towns in Southwestern Connecticut---the corner of the state closest to New York City. We see high home values in a few other enclaves, including around Lyme, Connecticut (which is near major, lucrative employers Pfizer, Electric Boat, US Coast Guard Academy, and Dominion Energy) and along the western border of the state, where country homes for wealthy vacation home owners are located. We see that the inland, eastern portion of the state generally possesses lower-than-median home values. We also see bands of lower-than-median home value towns in the central-western portion of the state. This plot does not provide information about absolute-scale median home prices. 
+We can see easily in our map that there is a concentration of high median home values for towns in Southwestern Connecticut---the corner of the state closest to New York City. We see high home values in a few other enclaves, including around Lyme, Connecticut (which is near major, lucrative employers Pfizer, Electric Boat, US Coast Guard Academy, and Dominion Energy) and along the western border of the state, where country homes for wealthy vacation home owners are located. We see that the inland, eastern portion of the state generally possesses lower-than-median home values. We also see bands of lower-than-median home value towns in the central-western portion of the state and around New Haven, CT. This plot does not provide information about absolute-scale median home prices. 
 \end{tcolorbox}
 ```
+
+---
 
 # Task 2: Replicating Moran's I Scatterplot
 
 Replicating this plot takes a little bit more behind-the-scenes magic. Specifically---we run into a problem with the fact that Connecticut's geometries for its towns in the shapefiles I used are *multipolygons*. These multipolygons are used in Connecticut specifically to include outlying islands that belong to Connecticut towns. Below, see how we must implement a method to remove these islands for proper neighbor-matching to get an accurate Moran's I scatterplot.
 
-```{r}
+```{r, echo=FALSE}
 #---------Data Cleaning for Moran's I Procedure--------------#
 
 # Shared boundary condition for neighbors definition
 ## To let poly2nb work, we have to convert our sf object to a sp object:
 ct_merged_shp_sp <- as(ct_merged_shp, "Spatial")
-ct_towns_nb <- poly2nb(ct_merged_shp_sp)
+ct_towns_nb <- suppressWarnings(poly2nb(ct_merged_shp_sp))
 
 # NOTE on multiploygons and polynb: islands become an issue:
 plot(ct_merged_shp_sp, border = 'lightgray', main = "CT Town Neighbors")
 plot(ct_towns_nb, coordinates(ct_merged_shp_sp), add = TRUE, col = "blue", 
                                                     pch = 20, cex = 0.6)
+```
 
+We notice along that we have a large number of unmatched islands littering the coastline. These will be factored into the Moran's I calculation, and interfere with our results later. We must remove these polygons from the multipolygon town geometries. We do not lose information for this particular analysis by doing this, as the median home value for each town is still preserved (and those medians include islands' homes).
+
+``` {r, echo=FALSE}
 # So, let's convert multipolygon town geometries to polygon geometries,
 # by selecting the largest landmass from each town (this logic is sound for
 # CT, but may not work universally)
 
 ## Destroy multipolygon geometry, separating multipolygons into polygons:
 ct_exploded <- ct_merged_shp %>%
-  st_cast("POLYGON") %>%                    # Cast to single polygons
-  mutate(poly_area = st_area(geometry))    # Calculate area of each polygon
+  suppressWarnings(st_cast("POLYGON")) %>% # Change to single polygons
+  mutate(poly_area = st_area(geometry)) # Calculate area of each polygon
 
 ##  Selection of largest polygon to take crown as the official town polygon
 ct_merged_shp_mainlands <- ct_exploded %>%
@@ -111,14 +115,14 @@ ct_merged_shp_mainlands <- ct_exploded %>%
 # Now, let's see our new neighbor matching scheme for CT towns:
 ct_merged_shp_mainlands <- as(ct_merged_shp_mainlands, "Spatial")
 ct_towns_nb_mainlands <- poly2nb(ct_merged_shp_mainlands, queen = TRUE)
-plot(ct_merged_shp_mainlands, border = 'lightgray', main = "CT Town Neighbors")
+plot(ct_merged_shp_mainlands, border = 'lightgray', main = "CT Town Neighbors - Mainlands Only")
 plot(ct_towns_nb_mainlands, coordinates(ct_merged_shp_mainlands), 
      add = TRUE, col = "blue", pch = 20, cex = 0.6)
 ```
 
+We were successful in removing the islands from the town geometries. Now, we can proceed to building the Moran's I scatteplot.
 
-
-```{r}
+```{r, echo=FALSE}
 #---------Assigning Neighbor Weights, Plotting Procedure-----------#
 
 # 1) Row-standardized neighbor weights (neighbors sum to 1 for each tract)
@@ -163,27 +167,29 @@ After some important spatial manipulation to the data to remove islands, we are 
 \end{tcolorbox}
 ```
 
+---
+
 # Task 3: Replacing Spatial Clustering Map
 
-```{r}
+```{r, echo=FALSE}
 ## --- Local clusters: Where are the highs and lows? (LISA) -------------------
 
-# 1) Standardize the variable and compute its spatial lag (neighbor average)
+# 1) Local Moran’s I for each tract (tests local clustering/outliers)
 z <- as.numeric(ct_merged_shp_mainlands$med_home_val_z_score)
-lag_z <- lag.listw(W_ct_towns, z, zero.policy = TRUE)
-
-# 2) Local Moran’s I for each tract (tests local clustering/outliers)
 lisa <- localmoran(z, W_ct_towns, zero.policy = TRUE)
 
-# 3) Attach key outputs back to the map for plotting
-ct_merged_shp_mainlands$Ii <- lisa[, "Ii"]                         # local I statistic
+# 2) Attach key outputs back to the map for plotting
+ct_merged_shp_mainlands$Ii <- lisa[, "Ii"]            # local I statistic
 p_col <- grep("^Pr\\(", colnames(lisa), value = TRUE) # robust p-val col
-ct_merged_shp_mainlands$Ii_p    <- lisa[, p_col]                    # pseudo p-value
+ct_merged_shp_mainlands$Ii_p    <- lisa[, p_col]      # pseudo p-value
 ct_merged_shp_mainlands$med_home_val_z_score <- z
 ct_merged_shp_mainlands$lag_std <- lag_z           #lag_std
 
-# 4) Classify each tract into LISA quadrants (α = 0.05)
+# 3) Classify each tract into LISA quadrants (α = 0.05)
 alpha <- 0.05
+## Go back to df object
+ct_merged_shp_mainlands <- st_as_sf(ct_merged_shp_mainlands)
+## Define quad for plotting
 ct_merged_shp_mainlands$quad <- "Not sig."
 
 ct_merged_shp_mainlands$quad[
@@ -210,21 +216,21 @@ ct_merged_shp_mainlands$quad[
   ct_merged_shp_mainlands$lag_std >= 0
 ] <- "Low-High"
 
-print(ct_merged_shp_mainlands$quad)
-
-# 5) Plot: LISA cluster map (hot/cold clusters and spatial outliers)
+# 4) Plot: LISA cluster map (hot/cold clusters and spatial outliers)
 p_lisa <- ggplot(ct_merged_shp_mainlands) +
-  geom_sf(aes(fill = factor(quad)), color = "grey70", size = 0.2) +
+  geom_sf(aes(fill = quad), color = "grey70", size = 0.2) +
   scale_fill_manual(
-    name   = "LISA quadrant (α = 0.05)",
-    values = c("High-High" = "#d73027",  # hotspot cluster
-               "Low-Low"  = "#4575b4",   # coldspot cluster
-               "High-Low" = "#fdae61",   # high surrounded by low (outlier)
-               "Low-High" = "#74add1",   # low surrounded by high (outlier)
-               "Not sig." = "grey85")
+    name = expression("LISA quadrant (" * alpha * " = 0.05)"),
+    values = c(
+      "High-High" = "#d73027",
+      "Low-Low"  = "#4575b4",
+      "High-Low" = "#fdae61",
+      "Low-High" = "#74add1",
+      "Not sig." = "grey85"
+    )
   ) +
   labs(
-    title = "Local Moran’s I — CT Median Home Values",
+    title = "Local Moran's I — CT Median Home Values",
     subtitle = "Standardized values (Z-scores); queen contiguity, row-standardized weights"
   ) +
   theme_minimal() +
@@ -248,11 +254,13 @@ print(p_lisa)
 High–High clusters appear in the southwest part of the state?}}
 
 \begin{tcolorbox}
-The clustering as shown illuminates the fact that some towns of Southwestern Connecticut---in particular, a subset of Fairfield County's towns---have high average home values, and their neighboring towns do as well.
+The clustering as shown illuminates the fact that some towns of Southwestern Connecticut---in particular, a subset of Fairfield County's towns---have high average home values, and their neighboring towns do as well. These towns are known to be sites of generational wealth, and are closer in proximity to the major wealth and employment center that is New York City.
 
-We notice an absence of the other cluster types.
-
-ISSUE TO RESOLVE: ENSURE THAT THE QUEEN CONTIGUITY IS ACTUALLY BEING APPLIED HERE!!!!!!!!!!!!
-
+We notice an absence of the other cluster types. It would be interesting to examine if this absence of other clusters is still the case for the subset of Connecticut towns excluding Fairfield County. In addition, we notice an artifact of using our neighbor method without including bordering towns from other states. Greenwich (seen in the Southwesternmost corner in gray), one of Connecticut highest-median-home-value towns, is not included in the High-High cluster.
 \end{tcolorbox}
 ```
+
+---
+
+Thank you! Have a great day.
+- Jack
