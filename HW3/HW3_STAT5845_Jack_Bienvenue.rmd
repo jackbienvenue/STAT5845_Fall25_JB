@@ -20,25 +20,58 @@ invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
                                             require, character.only = TRUE))))
 # Data import
 ## Median home values for CT towns
-med_home_ct18_df <- read.csv("./data/median-home-value0town-2018.csv")
+med_home_ct18_df <- read.csv("./data/median-home-value-town-2018.csv")
 ## CT towns (I am importing from my own shapefile I produced in the past)
 ct_shp<- st_read("./data/ct_towns/ct_towns.shp")
 
 # Inspect shapefile
 
 ```
+Let's start preparing for our analysis by cleaning our data.
 
 ```{r}
+# Ensure only Connecticut's towns are included for the shapefile
+ct_shp = ct_shp[ct_shp$CT_LEGEND == "Connecticut", ]
 
+# Ensure only relevant data is present in our home value dataframe:
+med_home_ct18_df = (
+  med_home_ct18_df[med_home_ct18_df$Variable == "Median Home Value" &
+                     med_home_ct18_df$Year == "2014-2018" &
+                     med_home_ct18_df$Measure.Type == "Number",]
+)
 ```
 
+To replicate the plot for Task 1, we will have to start by obtaining Z-scores for the median home value of each town. After that, we will merge the data sets. At last we will reproduce the map.
+
+```{r}
+# Create Z-score column
+med_home_ct18_df$med_home_val_z_score <- scale(med_home_ct18_df$Value)
+
+# Merge data
+ct_merged <- merge(ct_shp, med_home_ct18_df, 
+                   by.x = "TOWN_NAME", 
+                   by.y = "Town", 
+                   all.x = TRUE)
+# Build map 
+ggplot(data = ct_merged) +
+  # Fill each tract polygon by its standardized incidence
+  geom_sf(aes(fill = med_home_val_z_score)) +
+  # Diverging color scale: red = above average, blue = below average
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       name = "Standardized Z") +
+  # Add labels
+  labs(title = "Standardized Median Home Value (Z-scores)",
+       subtitle = "Z = 0 is the statewide average; red = above, blue = below") +
+  theme_minimal()
+```
 
 
 ```{=tex}
 \centering{\red{Question: What can you say about the home values in CT?}}
 
 \begin{tcolorbox}
-I
+We can see easily in our map that there is a concentration of high median home values for towns in Southwestern Connecticut---the corner of the state closest to New York City. We see high home values in a few other enclaves, including around Lyme, Connecticut (which is near major, lucrative employers Pfizer, Electric Boat, US Coast Guard Academy, and Dominion Energy) and along the western border of the state, where country homes for wealthy vacation home owners are located. We see that the inland, eastern portion of the state generally possesses lower-than-median home values. We also see bands of lower-than-median home value towns in the central-western portion of the state. This plot does not provide information about absolute-scale median home prices. 
 \end{tcolorbox}
 ```
 
