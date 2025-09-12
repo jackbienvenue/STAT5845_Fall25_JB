@@ -48,12 +48,12 @@ To replicate the plot for Task 1, we will have to start by obtaining Z-scores fo
 med_home_ct18_df$med_home_val_z_score <- scale(med_home_ct18_df$Value)
 
 # Merge data
-ct_merged <- merge(ct_shp, med_home_ct18_df, 
+ct_med_home_18_geom <- merge(ct_shp, med_home_ct18_df, 
                    by.x = "TOWN_NAME", 
                    by.y = "Town", 
                    all.x = TRUE)
 # Build map 
-ggplot(data = ct_merged) +
+ggplot(data = ct_med_home_18_geom) +
   # Fill each tract polygon by its standardized incidence
   geom_sf(aes(fill = med_home_val_z_score)) +
   # Diverging color scale: red = above average, blue = below average
@@ -78,7 +78,43 @@ We can see easily in our map that there is a concentration of high median home v
 # Task 2: Replicating Moran's I Scatterplot
 
 ```{r}
+# Shared boundary condition for neighbors definition
+## To let poly2nb work, we have to convert our sf object to a sp object:
+ct_med_home_18_geom <- as(ct_med_home_18_geom, "Spatial")
+ct_towns_nb <- poly2nb(ct_med_home_18_geom)
 
+# 1) Row-standardized neighbor weights (neighbors sum to 1 for each tract)
+W_ct_towns <- nb2listw(ct_towns_nb, style = "W", zero.policy = TRUE)
+
+# 2) Spatial lag = neighbor average of Z (using the standardized values)
+z      <- ct_med_home_18_geom$med_home_val_z_score
+lag_z  <- lag.listw(W_ct_towns, z, zero.policy = TRUE)
+
+# 3) Global index (slope) for reference
+mt <- moran.test(z, W_ct_towns, zero.policy = TRUE)
+I_hat <- as.numeric(mt$estimate[["Moran I statistic"]])
+
+# 4) Scatterplot: each point = one tract
+plot(z, lag_z,
+     xlab = "Standardized median home value (Z)",
+     ylab = "Spatial lag of Z (average of neighbors)",
+     main = "Moran Scatterplot -- CT Median Home Values",
+     pch  = 19, col = "grey35")
+abline(h = 0, v = 0, col = "grey75", lty = 2)
+
+# 5) Fitted line with slope equal to Moran’s I (intercept fixed at 0)
+abline(a = 0, b = I_hat, col = "red", lwd = 2)
+
+# 6) Annotate slope
+legend("topleft",
+       legend = paste0("Slope (Moran's I) = ", round(I_hat, 3)),
+       bty = "n", text.col = "red")
+
+# How to read this:
+# - Each dot compares a tract’s standardized Z to the average Z of its neighbors.
+# - An upward cloud and a positive red slope mean nearby tracts tend to be alike
+#   (high-with-high, low-with-low). A flat or downward pattern would mean weak
+#   or negative spatial dependence.
 ```
 
 ```{=tex}
@@ -92,7 +128,58 @@ I
 # Task 3: Replacing Spatial Clustering Map
 
 ```{r}
+## --- Local clusters: Where are the highs and lows? (LISA) -------------------
 
+# 1) Standardize the variable and compute its spatial lag (neighbor average)
+lag_z <- lag.listw(W_ct_towns, med_home_val_z_score, zero.policy = TRUE)
+
+# 2) Local Moran’s I for each tract (tests local clustering/outliers)
+lisa <- localmoran(med_home_val_z_score, W_ct_towns, zero.policy = TRUE)
+
+# 3) Attach key outputs back to the map for plotting
+med_home_ct18_df$Ii      <- lisa[, "Ii"]                                 # local I statistic
+p_col        <- grep("^Pr\\(", colnames(lisa), value = TRUE)        # robust p-value column
+med_home_ct18_df$Ii_p    <- lisa[, p_col]                                        # pseudo p-value
+med_home_ct18_df$Z_std   <- z_std
+med_home_ct18_df$lag_std <- lag_z
+
+# 4) Classify each tract into LISA quadrants (α = 0.05)
+alpha <- 0.05
+med_home_ct18_df$quad <- "Not sig."
+med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std >= 0 &  med_home_ct18_df$lag_std >= 0] <- "High-High"
+med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std <= 0 &  med_home_ct18_df$lag_std <= 0] <- "Low-Low"
+med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std >= 0 &  med_home_ct18_df$lag_std <= 0] <- "High-Low"
+med_home_ct18_df$quad[med_home_ct18_df$Ii_p <= alpha &  med_home_ct18_df$Z_std <= 0 &  med_home_ct18_df$lag_std >= 0] <- "Low-High"
+
+# 5) Plot: LISA cluster map (hot/cold clusters and spatial outliers)
+p_lisa <- ggplot(med_home_ct18_df) +
+  geom_sf(aes(fill = factor(quad)), color = "grey70", size = 0.2) +
+  scale_fill_manual(
+    name   = "LISA quadrant (α = 0.05)",
+    values = c("High-High" = "#d73027",  # hotspot cluster
+               "Low-Low"  = "#4575b4",   # coldspot cluster
+               "High-Low" = "#fdae61",   # high surrounded by low (outlier)
+               "Low-High" = "#74add1",   # low surrounded by high (outlier)
+               "Not sig." = "grey85")
+  ) +
+  labs(
+    title = "Local Moran’s I — CT Median Home Values",
+    subtitle = "Standardized values (Z-scores); queen contiguity, row-standardized weights"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+print(p_lisa)
+
+# What we see:
+# - Each tract is labeled by how it relates to its neighbors:
+#   • High–High: high Z with high neighbors → hotspot clusters.
+#   • Low–Low:   low Z with low neighbors → coldspot clusters.
+#   • High–Low / Low–High: spatial outliers (a tract unlike its neighborhood).
+#   • Not sig.: no clear local pattern at α = 0.05.
+# - This local view reveals *where* the global spatial dependence is strongest,
+#   highlighting pockets of elevated or depressed incidence and pinpointing
+#   tracts that buck their surroundings.
 ```
 
 ```{=tex}
@@ -103,5 +190,8 @@ High–High clusters appear in the southwest part of the state?}}
 The clustering as shown illuminates the fact that some towns of Southwestern Connecticut---in particular, a subset of Fairfield County's towns---have high average home values, and their neighboring towns do as well.
 
 We notice an absence of the other cluster types.
+
+ISSUE TO RESOLVE: ENSURE THAT THE QUEEN CONTIGUITY IS ACTUALLY BEING APPLIED HERE!!!!!!!!!!!!
+
 \end{tcolorbox}
 ```
