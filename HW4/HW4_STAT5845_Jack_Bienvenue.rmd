@@ -18,7 +18,8 @@ header-includes:
 invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
                                                      "gstat", "sf", "dplyr", 
                                                      "tidyr", "RColorBrewer",
-                                                     "ncdf4", "maps"), 
+                                                     "ncdf4", "maps",
+                                                     "spatstat"), 
                                             require, character.only = TRUE))))
 # Data import
 
@@ -80,13 +81,35 @@ ggplot() +
 \centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
 
 \begin{tcolorbox}
-I
+There appears to be a number of clusters in the dataset, particularly in the Texarkana regions, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning "cold spots" occupy much of the area that is outside of these Southern states. 
+
+We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
 \end{tcolorbox}
 ```
 
 # Task 2: Replicating G-function Plot for Lightning
 
 ```{r}
+# To prepare for nearest-neighbor methods, it is essential to project our 
+# data, because distances must be meaningful. 
+
+## Reproject to US UTM Zone 16 (centered longitudinally in ROI) 
+strikes_proj <- st_transform(strikes_sf, 32616)
+
+## Extract projected coordinates
+coords <- st_coordinates(strikes_proj)
+
+## Define observation window as bounds of coords
+W <- owin(xrange = range(coords[,1]),
+          yrange = range(coords[,2]))
+
+## Make the point pattern
+
+pp <- ppp(x=coords[,1], y=coords[,2], window=W)
+
+# For each lightning strike, find its nearest neighbour
+nn_id  <- nnwhich(pp)        # index of nearest neighbour for each tree
+nn_dist <- nndist(pp)        # nearest neighbour distances
 
 ```
 
@@ -95,5 +118,19 @@ I
 
 \begin{tcolorbox}
 I
+\end{tcolorbox}
+```
+
+# Task 3: Gaussian Kernel Density Estimate of Lightning Strikes
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Are lightning strikes equally likely everywhere, or do hotspots exist?}}
+
+\begin{tcolorbox}
+Since we are working with lightning strike data from a 
 \end{tcolorbox}
 ```
