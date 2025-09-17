@@ -22,6 +22,7 @@ invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
                                                      "mapdata",
                                                      "spatstat", "raster"), 
                                             require, character.only = TRUE))))
+options(warn = -1)
 # Data import
 
 ## Provide 
@@ -81,7 +82,7 @@ ggplot() +
 \centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
 
 \begin{tcolorbox}
-There appears to be a number of clusters in the dataset, particularly in the Texarkana regions, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning "cold spots" occupy much of the area that is outside of these Southern states. 
+There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
 
 We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
 \end{tcolorbox}
@@ -137,7 +138,7 @@ legend("bottomright",
 \centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
 
 \begin{tcolorbox}
-It appears that for the bulk of the ECDF, the nearest neighbors are closer than they would be for randomly distributed data within the region of interest window. We can tell because the empirical distribution of true lightning strike points lays to the left (lower distances) of the empirical distribution of randomly located points. This implies that our may be clustered to an extent we would not expect from randomly distributed points. 
+It appears that for the bulk of the ECDF, the nearest neighbors are closer than they would be for randomly distributed data within the region of interest window. We can tell because the empirical distribution of true lightning strike points lays to the left of the empirical distribution of randomly located points, corresponding to lower nearest neighbor distances for our data. This implies that our may be clustered to an extent we would not expect from randomly distributed points. 
 \end{tcolorbox}
 ```
 
@@ -199,7 +200,7 @@ ggplot() +
 \begin{tcolorbox}
 Since we are working with lightning strike data from a singular day, we will only generalize for that day. Lightning strikes do not appear to be equally likely everywhere. We began to suspect this earlier on in our analysis, and we observe this again in this task. We observe hotspots for lightning strike events.
 
-Our kernel density estimate identifies a number of hotspots which appear to have a higher probability of lightning strikes on this day. These include West Palm Beach, FL, Montgomery, AL, Texarkana, TX (& AR), Eastern Georgia, and some outlying areas southwest of Florida's Everglades. Other areas which previous had some density of lightning strikes do not appear as hotspots in this map with the given parameters.
+Our kernel density estimate identifies a number of hotspots which appear to have a higher probability of lightning strikes on this day. These include West Palm Beach, FL, Montgomery, AL, Texarkana, TX (and AR), Eastern Georgia, and some outlying areas southwest of Florida's Everglades. Other areas which previous had some density of lightning strikes do not appear as hotspots in this map with the given parameters.
 
 One caveat to this conclusion could be that we do not know whether the detection rate of lightning is equal across our region of interest. If there was reason to believe that our hotspots (and only our hotspots) had more sensitivity to lightning detection, our claims of hotspot detection may not be valid.
 \end{tcolorbox}
