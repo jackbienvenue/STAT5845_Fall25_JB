@@ -12,14 +12,15 @@ header-includes:
 
 # Task 1: Replicating Lightning Strike Point Pattern Map
 
-```{r}
+```{r, echo=FALSE}
 #----------------PRELIMINARIES-------------------#
 # Package import
 invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
                                                      "gstat", "sf", "dplyr", 
                                                      "tidyr", "RColorBrewer",
                                                      "ncdf4", "maps",
-                                                     "spatstat"), 
+                                                     "mapdata",
+                                                     "spatstat", "raster"), 
                                             require, character.only = TRUE))))
 # Data import
 
@@ -51,7 +52,7 @@ LONLAT <- do.call(
 strikes_df <- as.data.frame(LONLAT)
 ```
 
-```{r}
+```{r, echo=FALSE}
 strikes_sf <- st_as_sf(strikes_df, coords = c("LON", "LAT"), crs = 4326)
 us_states <- map_data("state")
 ggplot() +
@@ -74,7 +75,6 @@ ggplot() +
     title = "Locations of Lightning Strikes: June 14, 2023",
     x = "Longitude", y = "Latitude"
   )
-
 ```
 
 ```{=tex}
@@ -87,9 +87,11 @@ We also notice sometihng that may be a data recording artifact. Around 25 degree
 \end{tcolorbox}
 ```
 
+---
+
 # Task 2: Replicating G-function Plot for Lightning
 
-```{r}
+```{r, echo=FALSE}
 # To prepare for nearest-neighbor methods, it is essential to project our 
 # data, because distances must be meaningful. 
 
@@ -135,20 +137,70 @@ legend("bottomright",
 \centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
 
 \begin{tcolorbox}
-I
+It appears that for the bulk of the ECDF, the nearest neighbors are closer than they would be for randomly distributed data within the region of interest window. We can tell because the empirical distribution of true lightning strike points lays to the left (lower distances) of the empirical distribution of randomly located points. This implies that our may be clustered to an extent we would not expect from randomly distributed points. 
 \end{tcolorbox}
 ```
 
+---
+
 # Task 3: Gaussian Kernel Density Estimate of Lightning Strikes
 
-```{r}
+```{r, echo=FALSE}
+# Build KDE framework
+bw_dig <- bw.diggle(pp)
+bw_ppl <- bw.ppl(pp)
+sigma_m <- 34500 #m
 
+D_sel <- density.ppp(pp, sigma = sigma_m, kernel = "gaussian",
+                     edge = TRUE, at = "pixels", dimyx = 256)
+
+# Build plot
+
+## Project us states to utm to be compatible w/ KDE for mapping
+us_states <- map_data("state") # keeps long/lat
+us_states_sf <- st_as_sf(us_states, coords = c("long", "lat"), crs = 4326, remove = FALSE)
+us_states_utm <- st_transform(us_states_sf, 32616)
+
+## Convert KDE to raster for ggplot
+D_raster <- raster(D_sel)
+D_df <- as.data.frame(rasterToPoints(D_raster))
+colnames(D_df) <- c("x", "y", "density")
+D_df$dens_km2 <- D_df$density * 1e6
+
+## Complete plot
+ggplot() +
+  geom_sf(data = us_states_utm, fill = NA, color = "black", size = 0.3) +
+  geom_raster(data = D_df, aes(x = x, y = y, fill = dens_km2), alpha = 0.9) +
+  scale_fill_gradientn(
+    colors = c("navy", "blue3", "red3", "red", "yellow"),
+    guide = guide_colorbar(
+      barheight = unit(8, "cm"),  # taller legend
+      barwidth = unit(0.5, "cm")
+    )) +
+  coord_sf(xlim = range(coords[,1]), ylim = range(coords[,2])) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(),
+    panel.border = element_rect(colour = "black", fill = NA, size = 1),
+    axis.title = element_text(),
+    axis.text = element_text(),
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  labs(
+    title = "Gaussian KDE (σ = 34.5 km, 5x median NN dist)",
+    x = NULL, y = NULL,
+    fill = NULL  # remove legend label
+  )
 ```
 
 ```{=tex}
 \centering{\red{Question: Are lightning strikes equally likely everywhere, or do hotspots exist?}}
 
 \begin{tcolorbox}
-Since we are working with lightning strike data from a 
+Since we are working with lightning strike data from a singular day, we will only generalize for that day. Lightning strikes do not appear to be equally likely everywhere. We began to suspect this earlier on in our analysis, and we observe this again in this task. We observe hotspots for lightning strike events.
+
+Our kernel density estimate identifies a number of hotspots which appear to have a higher probability of lightning strikes on this day. These include West Palm Beach, FL, Montgomery, AL, Texarkana, TX (& AR), Eastern Georgia, and some outlying areas southwest of Florida's Everglades. Other areas which previous had some density of lightning strikes do not appear as hotspots in this map with the given parameters.
+
+One caveat to this conclusion could be that we do not know whether the detection rate of lightning is equal across our region of interest. If there was reason to believe that our hotspots (and only our hotspots) had more sensitivity to lightning detection, our claims of hotspot detection may not be valid.
 \end{tcolorbox}
 ```
