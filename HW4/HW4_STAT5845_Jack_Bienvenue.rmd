@@ -99,17 +99,35 @@ strikes_proj <- st_transform(strikes_sf, 32616)
 ## Extract projected coordinates
 coords <- st_coordinates(strikes_proj)
 
-## Define observation window as bounds of coords
-W <- owin(xrange = range(coords[,1]),
+## Set up some crucial variables
+N       <- nrow(strikes_proj)
+### Get bounding box window
+W_box <- owin(xrange = range(coords[,1]),
           yrange = range(coords[,2]))
+area_W  <- area.owin(W_box)
+lambda  <- N / area_W       # points per unit²
+unit_m  <- 1 # UTM units are 1m
+lambda_m2 <- lambda / (unit_m^2)
 
 ## Make the point pattern
+pp <- ppp(x=coords[,1], y=coords[,2], window=W_box)
 
-pp <- ppp(x=coords[,1], y=coords[,2], window=W)
-
-# For each lightning strike, find its nearest neighbour
+## For each lightning strike, find its nearest neighbour
 nn_id  <- nnwhich(pp)        # index of nearest neighbour for each tree
-nn_dist <- nndist(pp)        # nearest neighbour distances
+nn_dist <- nndist(pp)/1000        # nearest neighbour distances (km scale)
+
+# Plot ECDF
+plot(ecdf(nn_dist),
+     do.points = FALSE, verticals = TRUE,
+     xlab = "r (km)", ylab = "G(r)",
+     main = "G-function(Nearest-Neighbour ECDF) — Lightning Strikes",
+     ylim = c(0,1),
+     xlim = c(0,250))
+r <- seq(0, max(nn_dist)*1.05, length.out = 400)
+lines(r, 1 - exp(-pi * lambda * (r*1000)^2), lty = 2) # CSR baseline, r in m 
+legend("bottomright",
+       c("observed", "CSR benchmark"),
+       lty = c(1,2,3), bty = "n")
 
 ```
 
