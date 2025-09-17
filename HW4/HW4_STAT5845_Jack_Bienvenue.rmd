@@ -1,0 +1,99 @@
+---
+title: "Homework 4 - Lightning Strike Analysis"
+author: Jack Bienvenue
+date: 20 September 2025
+format: pdf
+header-includes:
+  - \usepackage{tcolorbox}
+  - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
+  - \usepackage{xcolor}
+  - \newcommand{\red}[1]{\textcolor{red}{#1}}
+---
+
+# Task 1: Replicating Lightning Strike Point Pattern Map
+
+```{r}
+#----------------PRELIMINARIES-------------------#
+# Package import
+invisible(suppressWarnings(suppressMessages(lapply(c("sp", "spdep", "ggplot2",
+                                                     "gstat", "sf", "dplyr", 
+                                                     "tidyr", "RColorBrewer",
+                                                     "ncdf4", "maps"), 
+                                            require, character.only = TRUE))))
+# Data import
+
+## Provide 
+
+in_dir  <- "../../data/GOES/2023/06/14"
+
+# --- 1) Collect & filter lightning coordinates from all NetCDF files --------
+nc_files <- list.files(in_dir, full.names = TRUE)
+
+LONLAT <- do.call(
+  rbind,
+  lapply(nc_files, function(f) {
+    nc <- nc_open(f)
+    on.exit(nc_close(nc), add = TRUE)
+    
+    # Read variables
+    lon <- ncvar_get(nc, "flash_lon")
+    lat <- ncvar_get(nc, "flash_lat")
+    eng <- ncvar_get(nc, "flash_energy")  # Joules
+    
+    # Keep energetic flashes in a reasonable CONUS-ish box
+    keep <- which(eng > 1e-11 & lat > 20 & lon > -100)  
+    if (length(keep) == 0) return(NULL)
+    
+    cbind(LON = lon[keep], LAT = lat[keep])
+  })
+)
+strikes_df <- as.data.frame(LONLAT)
+```
+
+```{r}
+strikes_sf <- st_as_sf(strikes_df, coords = c("LON", "LAT"), crs = 4326)
+us_states <- map_data("state")
+ggplot() +
+  geom_polygon(data = us_states, aes(x = long, y = lat, group = group),
+               fill = NA, color = "black", size = 0.3) +
+  geom_point(data = strikes_df, aes(x = LON, y = LAT),
+             color = "red", size = 1, alpha = 0.5) +
+  coord_fixed(ratio = 4/4.75, xlim = c(-100, -77.5), ylim = c(20, 40), expand = FALSE) +
+  theme_minimal(base_size = 12) +
+  theme(
+    panel.grid = element_blank(), 
+    panel.border = element_rect(   
+      colour = "black", fill = NA, size = 1
+    ),
+    axis.title = element_text(),
+    axis.text = element_text(), 
+    plot.title = element_text(hjust = 0.5)  
+  ) +
+  labs(
+    title = "Locations of Lightning Strikes: June 14, 2023",
+    x = "Longitude", y = "Latitude"
+  )
+
+```
+
+```{=tex}
+\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+
+\begin{tcolorbox}
+I
+\end{tcolorbox}
+```
+
+# Task 2: Replicating G-function Plot for Lightning
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+
+\begin{tcolorbox}
+I
+\end{tcolorbox}
+```
