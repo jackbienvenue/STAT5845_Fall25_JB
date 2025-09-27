@@ -1,0 +1,104 @@
+---
+title: "Numerical Weather Prediction"
+format: 
+ revealjs:
+  slideNumber: true
+  theme: night
+  include-in-header: 
+   text: |
+    <style>
+    .v-center-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90%;
+    }
+    </style>
+highlight-style: "github"  
+footer: "Jack Bienvenue | STAT4915" 
+preview-links: false
+---
+
+<!------------------------ CSS SETUP --------------------------->
+<style>
+  .container {
+    display: flex;
+    gap: 20px; /* space between columns */
+    align-items: flex-start; /* aligns top of both columns */
+  }
+
+  .col {
+    flex: 1;
+    text-align: center;
+  }
+
+  .col img {
+    height: 300px; /* desired uniform height */
+    width: auto;   /* maintain aspect ratio */
+    display: block;
+    margin: 0 auto;
+  }
+</style>
+<!---------------------------------------------------------------->
+
+<section data-auto-animate>
+  <h2 style="text-align: center;">Outage Prediction Modeling</h2>
+
+  <p>A great amount of information about power outages is contained in maximum wind velocity and precipitation intensity averages for a storm event.</p>
+
+<div style="text-align: center;">
+    <img src="images/city_power_outage.gif" style="width: 50%; max-width: 400px;">
+</div>
+
+  <p>However, predictions are far from perfect. Let's consider what we  know about storms'</p>
+
+  <h2 style="text-align: center;">Information Content</h2> 
+</section>
+
+<section data-auto-animate>
+  <h2 style="text-align: center;">Information Content</h2>
+
+  <p>Using extreme value features, prediction accuracy is highly sensitive to the data's temporal resolution.</p>
+
+  <img src="images/Storms.png">
+
+  <p>Why? Storm severity can get "lost in the cracks"</p>
+</section>
+
+<section data-auto-animate>
+  <h1 style="text-align: center;">The Path Forward</h1>
+</section>
+
+<section data-auto-animate>
+  <h2 style="text-align: center;">High-Resolution Rapid Refresh</h2>
+
+  <p>The good news is that better weather predictions are here, which in turn can help our outage predictions!</p>
+
+  <table style="width: 100%; border-collapse: collapse; text-align: center;">
+    <thead>
+      <tr>
+        <th style="border-bottom: 2px solid #ccc; padding: 10px;">Legacy Res.</th>
+        <th style="border-bottom: 2px solid #ccc; padding: 10px;">New Resolution</th>
+        <th style="border-bottom: 2px solid #ccc; padding: 10px;">Improvement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding: 10px;">1 hour temporal</td>
+        <td style="padding: 10px;">15 minute temporal</td>
+        <td style="padding: 10px;">4× higher resolution</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px;">9km spatial</td>
+        <td style="padding: 10px;">3km temporal </td>
+        <td style="padding: 10px;">9× higher resolution</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section data-auto-animate>
+  <h2 style="text-align: center;">HRRR Dataset Overview</h2>
+  <img src="images/noaa.png">
+  <p>a</p>
+</section>
