@@ -1,5 +1,5 @@
 ---
-title: "Numerical Weather Prediction"
+title: "Hurricane Helene: Extreme Precipitation Prediction"
 format: 
  revealjs:
   slideNumber: true
@@ -38,22 +38,28 @@ preview-links: false
     display: block;
     margin: 0 auto;
   }
+
+  .image-box {
+  background-color: rgba(240, 240, 240, 0.7); /* very light gray with 70% opacity */
+  padding: 20px;
+  border-radius: 12px;       /* rounded corners for a soft look */
+  display: inline-block;     /* shrink to fit content */
+  margin: 0 auto;            /* center in parent */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* optional: soft drop shadow */
+}
 </style>
 <!---------------------------------------------------------------->
 
-<section data-auto-animate>
-  <h2 style="text-align: center;">Outage Prediction Modeling</h2>
+<section data-auto-animate data-background="images/helene_over_us.gif" data-background-repeat="repeat" data-background-size="800px">
+  <h2 style="text-align: center;">When Only Extremes Matter</h2>
 
-  <p>A great amount of information about power outages is contained in maximum wind velocity and precipitation intensity averages for a storm event.</p>
+  <div class="image-box">
+    <img src="./images/precip.png" style="width: 50%; max-width: 400px;">
+  </div>
 
-<div style="text-align: center;">
-    <img src="images/city_power_outage.gif" style="width: 50%; max-width: 400px;">
-</div>
-
-  <p>However, predictions are far from perfect. Let's consider what we  know about storms'</p>
-
-  <h2 style="text-align: center;">Information Content</h2> 
 </section>
+
+
 
 <section data-auto-animate>
   <h2 style="text-align: center;">Information Content</h2>
@@ -100,5 +106,10 @@ preview-links: false
 <section data-auto-animate>
   <h2 style="text-align: center;">HRRR Dataset Overview</h2>
   <img src="images/noaa.png">
+  <p>a</p>
+</section>
+
+<section data-auto-animate>
+  <h2 style="text-align: center;">Problem Introduction</h2>
   <p>a</p>
 </section>
