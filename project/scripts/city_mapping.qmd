@@ -1,0 +1,53 @@
+---
+author: Jack Bienvenue
+title: Mapping US NOAA GHCN-Daily Locations
+date: 1 October 2025
+output: html
+---
+
+In this file, we will quickly view the locations
+``` {python}
+# Package Import
+import folium
+import pandas as pd
+import geopandas as gpd
+
+# Data Import
+city_info = pd.read_csv("../data/city_info.csv")
+```
+
+Build a quick map to view the locations:
+
+``` {python}
+map_center = [city_info['Lat'].mean(), city_info['Lon'].mean()]
+m = folium.Map(location=map_center, zoom_start=4)
+
+# Add weather stations points to map
+for _, row in city_info.iterrows():
+    folium.Marker(
+        location=[row['Lat'], row['Lon']],
+        popup=row['Name']
+    ).add_to(m)
+
+# View map
+m
+
+# Save map to use in the presentation
+#m.save("../figures/city_map_full_us.html")
+```
+
+Combining this map with NOAA storm track information:
+``` {python}
+#| echo: false
+from IPython.display import Image
+Image(filename='../figures/heleneinitialtrack.png')
+```
+
+we can see that we can filter out all weather stations west of Kansas City, and north of Detroit. 
+
+In addition, we know from our knowledge of the destruction Helene caused that the most import stations to follow will be:
+
+1. Asheville, NC
+2. Chattanooga, TN
+3. Bluefield, WV
+4. Beckley, WV
