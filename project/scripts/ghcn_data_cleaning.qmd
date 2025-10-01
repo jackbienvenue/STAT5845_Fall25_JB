@@ -1,0 +1,98 @@
+---
+author: Jack Bienvenue
+title: Preparing GHCN-Daily Data
+date: 1 October 2025
+output: html
+---
+
+```{python}
+#| echo: false
+
+# Package Import
+import pandas as pd
+import geopandas as gpd
+import os
+
+# Data import
+## Weather data folder
+weather_data_dir = os.path.join('..', 'data', 'ghcn_daily_data')
+
+## City Information Metadata
+city_info_df = pd.read_csv("../data/city_info.csv")
+```
+
+First, filter our data to the ROI we are interested in working with:
+
+``` {python}
+# Define bounding box
+lat_min, lat_max = 30, 44
+lon_min, lon_max = -95, -75  
+
+# Initialize list to store files which fall in ROI
+files_in_roi = []
+
+# Iterate through weather station files to pick out those in ROI
+for file_name in os.listdir(weather_data_dir):
+    if file_name.lower().endswith('.csv'):
+        file_path = os.path.join(weather_data_dir, file_name)
+
+        try:
+            # Read only the first row of the CSV
+            df = pd.read_csv(file_path, nrows=1)
+
+            if 'LATITUDE' in df.columns and 'LONGITUDE' in df.columns:
+                lat = df.at[0, 'LATITUDE']
+                lon = df.at[0, 'LONGITUDE']
+
+                if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
+                    files_in_roi.append(file_name)
+        except Exception as e:
+            print(f"Skipping {file_name}: {e}")
+```
+
+Now, we can check uniqueness of city names to see if we can replace the Station-ID file names with city names and remove the redundant "STATION" and "NAME" columns.
+
+```{python}
+#| echo: false
+# Build a list of city names pulled from our new files
+station_names = []
+
+for file_name in files_in_roi:
+    file_path = os.path.join(weather_data_dir, file_name)
+    
+    try:
+        # Read only the first row to get the STATION ID
+        df = pd.read_csv(file_path, nrows=1)
+
+        if 'STATION' in df.columns:
+            station_id = df.at[0, 'STATION']
+
+            # Match to city_info_df['ID']
+            match = city_info_df[city_info_df['ID'] == station_id]
+
+            if not match.empty:
+                name = match.iloc[0]['Name']
+                station_names.append(name)
+            else:
+                print(f"Station ID {station_id} not found in city_info_df.")
+    except Exception as e:
+        print(f"Error processing {file_name}: {e}")
+
+# Now check for uniqueness
+unique_station_names = set(station_names)
+
+print(f"\nTotal station names: {len(station_names)}")
+print(f"Unique station names: {len(unique_station_names)}")
+```
+
+Great! It looks like we have unique names for all our remaining stations. Now, we can get into some more thorough data preparation:
+
+``` {python}
+
+for 
+# Remove unnecessary columns
+
+
+# Replace file name with station, lat, lon
+
+```
