@@ -1,0 +1,157 @@
+---
+author: Jack Bienvenue
+title: Mapping Precipitation Prior to Helene
+date: 1 October 2025
+output: html
+---
+
+``` {python}
+#| echo: false
+# Package Import
+import pandas as pd
+import os
+import numpy as np
+import geopandas as gpd
+from shapely.geometry import box
+import matplotlib.pyplot as plt
+from shapely.geometry import Point, Polygon
+from scipy.spatial import Voronoi
+
+# Data Import
+weather_data_dir = os.path.join('..', 'data', 'ghcn_roi_daily_data')
+```
+
+Let's map precipitation in the region in a unique way. We have geostatistical weather data from a large number of weather stations. Precipitation in weather visualizations is generally represented in cloud-like fashion. We do not have adequate information here to make this kind of visualization however.
+
+My idea is to animate precipitation over Theissen polygons which cover the ROI which are centered on weather stations.
+
+``` {python}
+#| echo: false
+# Build Theissen Polygons
+
+## Give ROI bounds:
+lat_min, lat_max = 30, 44
+lon_min, lon_max = -95, -75
+
+## Extract points from weather stations
+station_coords = []
+
+for file in os.listdir(weather_data_dir):
+    if file.endswith('.csv'):
+        file_path = os.path.join(weather_data_dir, file)
+        df = pd.read_csv(file_path)
+
+        # Skip if lat/lon not in columns
+        if 'lat' in df.columns and 'lon' in df.columns:
+            lat = df['lat'].iloc[0]
+            lon = df['lon'].iloc[0]
+            
+            # Filter based on ROI
+            if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
+                station_coords.append((lon, lat))  # (x, y) format for Voronoi
+
+## Build Theissen Polygons
+points = np.array(station_coords)
+vor = Voronoi(points) #Theissen also called Voronoi
+
+# Define fxn to clip polygons to ROI
+def voronoi_polygons(vor, roi_bounds):
+    """
+    Clip Voronoi regions to the bounding box.
+    """
+    polygons = []
+    roi_polygon = Polygon([
+        (roi_bounds[0], roi_bounds[2]),  # Bottom-left
+        (roi_bounds[1], roi_bounds[2]),  # Bottom-right
+        (roi_bounds[1], roi_bounds[3]),  # Top-right
+        (roi_bounds[0], roi_bounds[3]),  # Top-left
+    ])
+
+    for region_index in vor.point_region:
+        region = vor.regions[region_index]
+        if -1 in region or len(region) == 0:
+            continue  # Skip infinite regions
+
+        polygon = Polygon([vor.vertices[i] for i in region])
+        clipped = polygon.intersection(roi_polygon)
+        if not clipped.is_empty:
+            polygons.append(clipped)
+    return polygons
+
+# Execute new function for this example:
+roi_bounds = (lon_min, lon_max, lat_min, lat_max)
+polygons = voronoi_polygons(vor, roi_bounds)
+```
+
+Here are the Thiessen polygons we acquire from the weather stations:
+
+```{python}
+#| echo: false
+# Plot the raw polygons to check if they worked:
+# Create GeoDataFrames
+gdf_polygons = gpd.GeoDataFrame(geometry=polygons)
+gdf_stations = gpd.GeoDataFrame(geometry=[Point(xy) for xy in points])
+
+# Set CRS to WGS84 (lat/lon)
+gdf_polygons.set_crs(epsg=4326, inplace=True)
+gdf_stations.set_crs(epsg=4326, inplace=True)
+
+# Create ROI bounding box as a GeoDataFrame
+roi_box = box(lon_min, lon_max, lat_min, lat_max)
+roi_gdf = gpd.GeoDataFrame(geometry=[roi_box], crs="EPSG:4326")
+
+# Import US states shapefile
+us_states = gpd.read_file("https://www2.census.gov/geo/tiger/GENZ2022/shp/cb_2022_us_state_500k.zip")
+
+# Filter contiguous U.S.
+exclude_states = ['Alaska', 'Hawaii', 'Puerto Rico']
+us_mainland = us_states[~us_states['NAME'].isin(exclude_states)]
+
+# Ensure CRS matches
+us_mainland = us_mainland.to_crs(epsg=4326)
+
+# ---- CLIP ALL LAYERS TO ROI ----
+us_mainland_clipped = gpd.clip(us_mainland, roi_box)
+gdf_polygons_clipped = gpd.clip(gdf_polygons, roi_box)
+gdf_stations_clipped = gdf_stations[gdf_stations.within(roi_box)]
+
+# ---- PLOTTING ----
+fig, ax = plt.subplots(figsize=(12, 10))
+
+# Plot clipped state outlines
+us_mainland_clipped.boundary.plot(ax=ax, color='black', linewidth=1)
+
+# Plot clipped Voronoi polygons
+gdf_polygons_clipped.plot(ax=ax, facecolor='lightblue', edgecolor='gray', alpha=0.5)
+
+# Plot stations
+gdf_stations_clipped.plot(ax=ax, color='red', markersize=20)
+
+# ROI boundary (optional visual)
+gpd.GeoSeries([roi_box], crs="EPSG:4326").boundary.plot(ax=ax, color='black', linestyle='--')
+
+# Styling
+plt.title('Voronoi Polygons Clipped to ROI with US State Outlines')
+plt.xlabel('Longitude')
+plt.ylabel('Latitude')
+ax.set_xlim(-95, -75)
+ax.set_ylim(30, 44)
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+```
+
+These polygons appear to be satisfactory, showing adequate homogeneity in size and spread.
+
+Let's use our precipitation data to build the 7 precipitation visualizations:
+
+```{python}
+
+```
+
+Build animation of precipitation for time frame:
+
+``` {python}
+# Glue images into animation
+
+```
