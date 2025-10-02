@@ -88,11 +88,56 @@ print(f"Unique station names: {len(unique_station_names)}")
 Great! It looks like we have unique names for all our remaining stations. Now, we can get into some more thorough data preparation:
 
 ``` {python}
+output_dir = "../data/ghcn_roi_daily_data"
 
-for 
-# Remove unnecessary columns
+for file_name in files_in_roi:
+    file_path = os.path.join(weather_data_dir, file_name)
 
+    try:
+        # Load full CSV
+        df = pd.read_csv(file_path)
 
-# Replace file name with station, lat, lon
+        # Keep only relevant columns
+        keep_cols = ['STATION', 'DATE', 'LATITUDE', 'LONGITUDE', 'PRCP', 'TMAX', 'TMIN']
+        df = df[[col for col in keep_cols if col in df.columns]]
 
+        # Rename columns
+        rename_map = {
+            'STATION': 'station',
+            'DATE': 'date',
+            'LATITUDE': 'lat',
+            'LONGITUDE': 'lon',
+            'PRCP': 'precipitation',
+            'TMAX': 'tmax',
+            'TMIN': 'tmin'
+        }
+        df = df.rename(columns=rename_map)
+
+        # Convert units
+        if 'precipitation' in df.columns:
+            df['precipitation'] = (df['precipitation'] / 10).round(1)  
+
+        for temp_col in ['tmax', 'tmin']:
+            if temp_col in df.columns:
+                df[temp_col] = (df[temp_col] / 10).round(1)  # tenths degC to degC
+
+        # Get metadata from first row
+        lat = df.at[0, 'lat'] if 'lat' in df.columns else ''
+        lon = df.at[0, 'lon'] if 'lon' in df.columns else ''
+        station_id = df.at[0, 'station']
+
+        # Look up name from metadata
+        match = city_info_df[city_info_df['ID'] == station_id]
+        name = match.iloc[0]['Name'] if not match.empty else 'Unknown'
+        df_clean = df
+
+        # Save to cleaned file (use station name as filename, cleaned)
+        safe_name = name.replace(" ", "_").replace("/", "_").replace("\\", "_")
+        output_file = os.path.join(output_dir, f"{safe_name}.csv")
+        df_clean.to_csv(output_file, index=False)
+
+        #print(f"Processed, saved: {output_file}")
+
+    except Exception as e:
+        print(f"Error processing {file_name}: {e}")
 ```
