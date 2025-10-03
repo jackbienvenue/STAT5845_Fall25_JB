@@ -25,8 +25,8 @@ First, filter our data to the ROI we are interested in working with:
 
 ``` {python}
 # Define bounding box
-lat_min, lat_max = 30, 44
-lon_min, lon_max = -95, -75  
+lat_min, lat_max = 25, 49
+lon_min, lon_max = -100, -70  
 
 # Initialize list to store files which fall in ROI
 files_in_roi = []
