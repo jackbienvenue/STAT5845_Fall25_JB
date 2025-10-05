@@ -50,66 +50,31 @@ preview-links: false
 </style>
 <!---------------------------------------------------------------->
 
-<section data-auto-animate data-background="images/helene_over_us.gif" data-background-repeat="repeat" data-background-size="800px">
+<section data-auto-animate data-background="images/helene_over_us.gif" data-background-repeat="repeat" data-background-size="1000px">
   <h2 style="text-align: center;">When Only Extremes Matter</h2>
 
   <div class="image-box">
-    <img src="./images/precip.png" style="width: 50%; max-width: 400px;">
+  <img src="images/precip.png" style="display: block; margin: 0 auto; width: 75%;">
   </div>
-
-</section>
-
-
-
-<section data-auto-animate>
-  <h2 style="text-align: center;">Information Content</h2>
-
-  <p>Using extreme value features, prediction accuracy is highly sensitive to the data's temporal resolution.</p>
-
-  <img src="images/Storms.png">
-
-  <p>Why? Storm severity can get "lost in the cracks"</p>
 </section>
 
 <section data-auto-animate>
-  <h1 style="text-align: center;">The Path Forward</h1>
-</section>
-
-<section data-auto-animate>
-  <h2 style="text-align: center;">High-Resolution Rapid Refresh</h2>
-
-  <p>The good news is that better weather predictions are here, which in turn can help our outage predictions!</p>
-
-  <table style="width: 100%; border-collapse: collapse; text-align: center;">
-    <thead>
-      <tr>
-        <th style="border-bottom: 2px solid #ccc; padding: 10px;">Legacy Res.</th>
-        <th style="border-bottom: 2px solid #ccc; padding: 10px;">New Resolution</th>
-        <th style="border-bottom: 2px solid #ccc; padding: 10px;">Improvement</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="padding: 10px;">1 hour temporal</td>
-        <td style="padding: 10px;">15 minute temporal</td>
-        <td style="padding: 10px;">4× higher resolution</td>
-      </tr>
-      <tr>
-        <td style="padding: 10px;">9km spatial</td>
-        <td style="padding: 10px;">3km temporal </td>
-        <td style="padding: 10px;">9× higher resolution</td>
-      </tr>
-    </tbody>
-  </table>
-</section>
-
-<section data-auto-animate>
-  <h2 style="text-align: center;">HRRR Dataset Overview</h2>
-  <img src="images/noaa.png">
+  <h2 style="text-align: center;">Data Overview</h2>
   <p>a</p>
 </section>
 
-<section data-auto-animate>
-  <h2 style="text-align: center;">Problem Introduction</h2>
-  <p>a</p>
+<section data-auto-animate data-background="images/precip_animation.gif" data-background-repeat="repeat" data-background-size="1250px">
+  <h2 style="text-align: center;">a</h2>
+
+  <div class="image-box">
+  <p>Hello world!</p>
+  </div>
 </section>
+
+
+## Image credits
+
+- Slide 2: Helene gif https://commons.wikimedia.org/wiki/File:2024_CIMSS_09L_Helene_visible_infrared_satellite_loop.gif
+- Slide 3: 
+
+- NC Lake devastation - https://www.latimes.com/opinion/story/2024-10-04/hurricane-helene-north-carolina-climate-change
