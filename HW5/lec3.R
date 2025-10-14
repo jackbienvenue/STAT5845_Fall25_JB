@@ -22,7 +22,7 @@ library(patchwork)  # combine plots
 
 # --- Load and tidy the daily data --------------------------------------------
 co2_daily <- read.csv(
-  "../data/co2_daily_mlo.csv",
+  "./co2_daily_mlo.csv",
   header = FALSE, skip = 32,
   col.names = c("year","month","day","decimal_date","co2")
 ) %>%

@@ -10,12 +10,13 @@ header-includes:
   - \newcommand{\red}[1]{\textcolor{red}{#1}}
 ---
 
-```{r DATA-AND-PACKAGE-IMPORT}
+```{r DATA-AND-PACKAGE-IMPORT, echo=FALSE}
 # PACKAGE IMPORT
 invisible(suppressWarnings(suppressMessages(lapply(c("ggplot2", "dplyr", 
                                                      "tidyr", "RColorBrewer",
                                                      "lubridate", "patchwork",
-                                                     "broom"), 
+                                                     "broom", "tseries",
+                                                     "forecast"), 
                                             require, character.only = TRUE))))
 options(warn = -1)
 
@@ -30,52 +31,533 @@ co2_daily <- read.csv(
   # Keep only valid dates and valid CO2 values
   filter(!is.na(date), !is.na(co2)) %>%
   arrange(date)
+
+# DATA SETUP
+co2_month <- co2_daily %>%
+  transmute(
+    ym = floor_date(date, "month"),
+    co2 = co2
+  ) %>%
+  group_by(ym) %>%
+  summarise(co2 = mean(co2, na.rm = TRUE), .groups = "drop") %>%
+  mutate(
+    year = year(ym),
+    month = month(ym, label = TRUE, abbr = TRUE)
+  )
+
+co2_model <- co2_month %>%
+  mutate(
+    # Numeric time (in years) centered at 0 for numerical stability
+    year_num = year(ym) + (month(ym) - 0.5)/12,
+    t        = year_num - min(year_num),
+    # Seasonal harmonics (period = 1 year)
+    s1 = sin(2*pi*t), 
+    c1 = cos(2*pi*t)
+  )
+
+# What these columns mean 
+# - year_num:
+#     * Transforms each monthly timestamp into a decimal year.
+#     * Example: mid-January 1980 ≈ 1980.04, June 1980 ≈ 1980.46, December 1980 ≈ 1980.96.
+#     * Placing each month at its midpoint avoids December being coded as the *next* year.
+#
+# - t:
+#     * Time in years, but shifted so the very first observation = 0.
+#     * This way, the timeline runs 0, 1, 2, … up to ~65 instead of 1958, 1959, 1960, …
+#     * Centering at 0 prevents numerical instability when fitting polynomials (like t²).
+#
+# - s1 and c1:
+#     * These are sine and cosine terms with period = 1 year.
+#     * They are called "harmonic regressors."
+#     * Why do we need both?
+#         - sin(2πt) captures a wavy pattern (up–down cycle),
+#         - cos(2πt) is the same wave shifted by 3 months,
+#         - together, they can reproduce any repeating annual cycle, no matter where the peak falls.
+#
+# In short:
+#   year_num = actual calendar time,
+#   t        = relative time since the start,
+#   s1, c1   = seasonal building blocks (1st harmonic).
 ```
 
 # Task 1: Misspecifying the Deterministic Part
 
-```{r}
+```{r, echo=FALSE}
+############################################################
+# FORECAST EVALUATION — Leave out 2024 and forecast it
+############################################################
 
+# --- Step 1: Split data ------------------------------------------------------
+cutoff_date <- as.Date("2024-01-01")
+
+train_data <- co2_month %>%
+  filter(ym < cutoff_date)
+
+test_data <- co2_month %>%
+  filter(ym >= cutoff_date)
+
+# --- Step 2: Refit deterministic model (Model D) on training data ------------
+train_model <- train_data %>%
+  mutate(
+    year_num = year(ym) + (month(ym) - 0.5)/12,
+    t        = year_num - min(year_num)#,
+    #s1       = sin(2*pi*t),
+    #c1       = cos(2*pi*t)     # CHOP OUT HARMONICS FOR LINEAR TREND
+  )
+
+m_train <- lm(co2 ~ t, data = train_model) # LINEAR ONLY
+
+# --- Step 3: Compute residuals and fit ARIMA model ----------------------------
+resid_train <- augment(m_train, data = train_model)$.resid
+
+fit_auto_train <- auto.arima(resid_train)
+
+# --- Step 4: Build forecast horizon into 2024 --------------------------------
+h_test <- nrow(test_data)
+
+last_t_train <- max(train_model$t)
+
+future_t <- data.frame(
+  t = seq(last_t_train + 1/12, last_t_train + h_test/12, by = 1/12)
+) #%>%
+  #mutate(
+    #s1 = sin(2*pi*t),
+    #c1 = cos(2*pi*t)
+    #) # REMOVE HARMONICS
+
+# Deterministic forecast
+mu_hat_future <- predict(m_train, newdata = future_t)
+
+# Stochastic (ARIMA) forecast
+arma_fc <- predict(fit_auto_train, n.ahead = h_test)
+y_hat_future <- arma_fc$pred
+arma_se <- arma_fc$se
+
+# Total forecast
+x_hat_future <- mu_hat_future + y_hat_future
+upper <- x_hat_future + qnorm(0.975) * arma_se
+lower <- x_hat_future - qnorm(0.975) * arma_se
+
+# --- Step 5: Create forecast DataFrame ---------------------------------------
+future_dates <- seq(max(train_data$ym) + months(1),
+                    by = "month", length.out = h_test)
+
+forecast_eval <- data.frame(
+  date = future_dates,
+  forecast = x_hat_future,
+  lower = lower,
+  upper = upper
+)
+
+# --- Step 6: Merge observed test data ----------------------------------------
+compare_df <- test_data %>%
+  rename(date = ym, actual = co2) %>%
+  left_join(forecast_eval, by = "date")
+
+# --- Step 7: Compute evaluation metrics --------------------------------------
+rmse <- sqrt(mean((compare_df$actual - compare_df$forecast)^2, na.rm = TRUE))
+mae  <- mean(abs(compare_df$actual - compare_df$forecast), na.rm = TRUE)
+
+cat("Forecast evaluation for 2024:\n")
+cat("RMSE =", round(rmse, 3), "ppm\n")
+cat("MAE  =", round(mae, 3), "ppm\n")
+
+############################################################
+# Zoomed evaluation plot — focus on recent window
+############################################################
+
+# How many months of history before the cutoff to show?
+n_past_train <- 24  # last 24 months before 2024
+
+train_recent <- train_data %>%
+  filter(ym >= cutoff_date %m-% months(n_past_train))
+
+# Nice y-limits with small padding
+ymin <- min(c(train_recent$co2, compare_df$actual, forecast_eval$lower), na.rm = TRUE)
+ymax <- max(c(train_recent$co2, compare_df$actual, forecast_eval$upper), na.rm = TRUE)
+ypad <- 0.02 * (ymax - ymin)
+
+ggplot() +
+  # Prediction interval ribbon (forecast period)
+  geom_ribbon(
+    data = forecast_eval,
+    aes(x = date, ymin = lower, ymax = upper),
+    fill = "skyblue", alpha = 0.3
+  ) +
+  # Forecast line
+  geom_line(
+    data = forecast_eval,
+    aes(x = date, y = forecast, color = "Forecast"),
+    linewidth = 1
+  ) +
+  # Observed in the holdout year
+  geom_line(
+    data = compare_df,
+    aes(x = date, y = actual, color = "Observed"),
+    linewidth = 0.8
+  ) +
+  # Recent training history
+  geom_line(
+    data = train_recent,
+    aes(x = ym, y = co2, color = "History"),
+    linewidth = 0.6
+  ) +
+  # Mark the forecast start. Use Date directly to avoid the warning.
+  geom_vline(xintercept = cutoff_date, linetype = "dashed", color = "red") +
+  annotate(
+    "text",
+    x = cutoff_date + 15,               # ~2 weeks into 2024
+    y = ymin + ypad,
+    label = "Forecast starts \u2192",
+    hjust = 0, color = "red", size = 3
+  ) +
+  scale_color_manual(
+    values = c("History" = "grey40", "Observed" = "black", "Forecast" = "blue")
+  ) +
+  labs(
+    title = "CO2 — Misspecification Task 1 (Linear μ only) — 2024 Holdout",
+    subtitle = paste0("RMSE = ", round(rmse, 2), " ppm   |   MAE = ", round(mae, 2), " ppm"),
+    x = "Date", y = "CO2 (ppm)", color = NULL
+  ) +
+  coord_cartesian(
+    xlim = c(cutoff_date %m-% months(n_past_train), max(forecast_eval$date)),
+    ylim = c(ymin - ypad, ymax + ypad)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
 ```
 
 ```{=tex}
-\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+\centering{\red{Question: What happens if the deterministic part is misspecified?}}
 
 \begin{tcolorbox}
-There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
 
-We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
+A misspecification of the deterministic part of a model will lead to improper predictions. In particular, we will miss out on important \emph{deterministic} harmonic behavior caused by seasonal effects (like CO2 being absorbed by plants during the Global North's summertime). It is not immediately obvious that this deterministic harmonic trend is missing, as we still observe harmonic-like behavior in our predictions. As it turns out, those ``wiggles" are introduced by the ARIMA! It is capturing some of the seasonal variance that was uncaptured by the linear deterministic trend. This effect helps to keep predictions moving forward in time to assume a reasonable-appearing shape, but with a poorly-fitting deterministic trend and a ``confused" ARIMA model attempting to resolve deterministic \emph{and} stochastic variation, we end up with quite consistent underprediction. Analyzing residuals would show that they do not have mean $0$.
 \end{tcolorbox}
 ```
 
 # Task 2: Misspecifying the Stochastic Process
 
-```{r}
+```{r, echo=FALSE}
+############################################################
+# FORECAST EVALUATION — Leave out 2024 and forecast it
+############################################################
+
+# --- Step 1: Split data ------------------------------------------------------
+cutoff_date <- as.Date("2024-01-01")
+
+train_data <- co2_month %>%
+  filter(ym < cutoff_date)
+
+test_data <- co2_month %>%
+  filter(ym >= cutoff_date)
+
+# --- Step 2: Refit deterministic model (Model D) on training data ------------
+train_model <- train_data %>%
+  mutate(
+    year_num = year(ym) + (month(ym) - 0.5)/12,
+    t        = year_num - min(year_num),
+    s1       = sin(2*pi*t),
+    c1       = cos(2*pi*t)
+  )
+
+m_train <- lm(co2 ~ t + I(t^2) + s1 + c1, data = train_model)
+
+# --- Step 3: Compute residuals and fit ARIMA model ----------------------------
+resid_train <- augment(m_train, data = train_model)$.resid
+
+fit_arma11_train <- Arima(resid_train, order = c(1,0,1)) # REPLACE auto ARIMA 
+                                                         # w/ fixed ARMA(1,1)
+
+# --- Step 4: Build forecast horizon into 2024 --------------------------------
+h_test <- nrow(test_data)
+
+last_t_train <- max(train_model$t)
+
+future_t <- data.frame(
+  t = seq(last_t_train + 1/12, last_t_train + h_test/12, by = 1/12)
+) %>%
+  mutate(
+    s1 = sin(2*pi*t),
+    c1 = cos(2*pi*t)
+  )
+
+# Deterministic forecast
+mu_hat_future <- predict(m_train, newdata = future_t)
+
+# Stochastic (ARIMA) forecast
+arma_fc <- predict(fit_arma11_train, n.ahead = h_test)
+y_hat_future <- arma_fc$pred
+arma_se <- arma_fc$se
+
+# Total forecast
+x_hat_future <- mu_hat_future + y_hat_future
+upper <- x_hat_future + qnorm(0.975) * arma_se
+lower <- x_hat_future - qnorm(0.975) * arma_se
+
+# --- Step 5: Create forecast DataFrame ---------------------------------------
+future_dates <- seq(max(train_data$ym) + months(1),
+                    by = "month", length.out = h_test)
+
+forecast_eval <- data.frame(
+  date = future_dates,
+  forecast = x_hat_future,
+  lower = lower,
+  upper = upper
+)
+
+# --- Step 6: Merge observed test data ----------------------------------------
+compare_df <- test_data %>%
+  rename(date = ym, actual = co2) %>%
+  left_join(forecast_eval, by = "date")
+
+# --- Step 7: Compute evaluation metrics --------------------------------------
+rmse <- sqrt(mean((compare_df$actual - compare_df$forecast)^2, na.rm = TRUE))
+mae  <- mean(abs(compare_df$actual - compare_df$forecast), na.rm = TRUE)
+
+cat("Forecast evaluation for 2024:\n")
+cat("RMSE =", round(rmse, 3), "ppm\n")
+cat("MAE  =", round(mae, 3), "ppm\n")
+
+############################################################
+# Zoomed evaluation plot — focus on recent window
+############################################################
+
+# How many months of history before the cutoff to show?
+n_past_train <- 24  # last 24 months before 2024
+
+train_recent <- train_data %>%
+  filter(ym >= cutoff_date %m-% months(n_past_train))
+
+# Nice y-limits with small padding
+ymin <- min(c(train_recent$co2, compare_df$actual, forecast_eval$lower), na.rm = TRUE)
+ymax <- max(c(train_recent$co2, compare_df$actual, forecast_eval$upper), na.rm = TRUE)
+ypad <- 0.02 * (ymax - ymin)
+
+ggplot() +
+  # Prediction interval ribbon (forecast period)
+  geom_ribbon(
+    data = forecast_eval,
+    aes(x = date, ymin = lower, ymax = upper),
+    fill = "skyblue", alpha = 0.3
+  ) +
+  # Forecast line
+  geom_line(
+    data = forecast_eval,
+    aes(x = date, y = forecast, color = "Forecast"),
+    linewidth = 1
+  ) +
+  # Observed in the holdout year
+  geom_line(
+    data = compare_df,
+    aes(x = date, y = actual, color = "Observed"),
+    linewidth = 0.8
+  ) +
+  # Recent training history
+  geom_line(
+    data = train_recent,
+    aes(x = ym, y = co2, color = "History"),
+    linewidth = 0.6
+  ) +
+  # Mark the forecast start. Use Date directly to avoid the warning.
+  geom_vline(xintercept = cutoff_date, linetype = "dashed", color = "red") +
+  annotate(
+    "text",
+    x = cutoff_date + 15,               # ~2 weeks into 2024
+    y = ymin + ypad,
+    label = "Forecast starts \u2192",
+    hjust = 0, color = "red", size = 3
+  ) +
+  scale_color_manual(
+    values = c("History" = "grey40", "Observed" = "black", "Forecast" = "blue")
+  ) +
+  labs(
+    title = "CO₂ Forecast Evaluation — Holdout 2024 (Zoomed)",
+    subtitle = paste0("RMSE = ", round(rmse, 2), " ppm   |   MAE = ", round(mae, 2), " ppm"),
+    x = "Date", y = "CO₂ (ppm)", color = NULL
+  ) +
+  coord_cartesian(
+    xlim = c(cutoff_date %m-% months(n_past_train), max(forecast_eval$date)),
+    ylim = c(ymin - ypad, ymax + ypad)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
 
 ```
 
 ```{=tex}
-\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+\centering{\red{Question: What happens if the stochastic process is misspecified?}}
 
 \begin{tcolorbox}
-There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
 
-We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
+A misspecification of the stochastic process in this example leads to fairly consistent underprediction of future CO2. In general, for a time series model, we expect to obtain biased predictions for inflexible specification of the stochastic model. Since our ARIMA model has arguments (1,0,1), we actually have an ARMA model with only first-order autoregression and first-order moving average terms. No differencing is applied. Differencing is important for this example, because we know that our mean CO2 has been reliably increasing and therefore, the mean is nonstationary. While the predictions look fairly acceptable for this short time frame, we would expect our omission of differencing to have large, undesirable predictive bias over the long term. We did not test our assumptions for a reasonable amount of lags to include for AR and MA, so there may be relevant information encoded in other lag variables, another potential misspecification error. Our deterministic component ``saves" the predictions here to make them appear reasonable, but the structure of the model is poor. In the next example, we'll see what happens if the deterministic component does not come to the rescue.
+
 \end{tcolorbox}
 ```
 
 # Task 3: Misspecifying Deterministic, Stochastic Parts
 
-```{r}
+```{r, echo=FALSE}
+############################################################
+# FORECAST EVALUATION — Leave out 2024 and forecast it
+############################################################
 
+# --- Step 1: Split data ------------------------------------------------------
+cutoff_date <- as.Date("2024-01-01")
+
+train_data <- co2_month %>%
+  filter(ym < cutoff_date)
+
+test_data <- co2_month %>%
+  filter(ym >= cutoff_date)
+
+# --- Step 2: Refit deterministic model (Model D) on training data ------------
+train_model <- train_data %>%
+  mutate(
+    year_num = year(ym) + (month(ym) - 0.5)/12,
+    t        = year_num - min(year_num)#,
+    #s1       = sin(2*pi*t),
+    #c1       = cos(2*pi*t)  # REMOVE HARMICS
+  )
+
+m_train <- lm(co2 ~ t, data = train_model) # REMOVE non-linear terms
+
+# --- Step 3: Compute residuals and fit ARIMA model ----------------------------
+resid_train <- augment(m_train, data = train_model)$.resid
+
+fit_arma11_train <- Arima(resid_train, order = c(1,0,1)) # REPLACE auto ARIMA 
+                                                         # w/ fixed ARMA(1,1)
+
+# --- Step 4: Build forecast horizon into 2024 --------------------------------
+h_test <- nrow(test_data)
+
+last_t_train <- max(train_model$t)
+
+future_t <- data.frame(
+  t = seq(last_t_train + 1/12, last_t_train + h_test/12, by = 1/12)
+) #%>%
+  #mutate(
+  #  s1 = sin(2*pi*t),
+  #  c1 = cos(2*pi*t)
+  #)
+
+# Deterministic forecast
+mu_hat_future <- predict(m_train, newdata = future_t)
+
+# Stochastic (ARIMA) forecast
+arma_fc <- predict(fit_arma11_train, n.ahead = h_test)
+y_hat_future <- arma_fc$pred
+arma_se <- arma_fc$se
+
+# Total forecast
+x_hat_future <- mu_hat_future + y_hat_future
+upper <- x_hat_future + qnorm(0.975) * arma_se
+lower <- x_hat_future - qnorm(0.975) * arma_se
+
+# --- Step 5: Create forecast DataFrame ---------------------------------------
+future_dates <- seq(max(train_data$ym) + months(1),
+                    by = "month", length.out = h_test)
+
+forecast_eval <- data.frame(
+  date = future_dates,
+  forecast = x_hat_future,
+  lower = lower,
+  upper = upper
+)
+
+# --- Step 6: Merge observed test data ----------------------------------------
+compare_df <- test_data %>%
+  rename(date = ym, actual = co2) %>%
+  left_join(forecast_eval, by = "date")
+
+# --- Step 7: Compute evaluation metrics --------------------------------------
+rmse <- sqrt(mean((compare_df$actual - compare_df$forecast)^2, na.rm = TRUE))
+mae  <- mean(abs(compare_df$actual - compare_df$forecast), na.rm = TRUE)
+
+cat("Forecast evaluation for 2024:\n")
+cat("RMSE =", round(rmse, 3), "ppm\n")
+cat("MAE  =", round(mae, 3), "ppm\n")
+
+############################################################
+# Zoomed evaluation plot — focus on recent window
+############################################################
+
+# How many months of history before the cutoff to show?
+n_past_train <- 24  # last 24 months before 2024
+
+train_recent <- train_data %>%
+  filter(ym >= cutoff_date %m-% months(n_past_train))
+
+# Nice y-limits with small padding
+ymin <- min(c(train_recent$co2, compare_df$actual, forecast_eval$lower), na.rm = TRUE)
+ymax <- max(c(train_recent$co2, compare_df$actual, forecast_eval$upper), na.rm = TRUE)
+ypad <- 0.02 * (ymax - ymin)
+
+ggplot() +
+  # Prediction interval ribbon (forecast period)
+  geom_ribbon(
+    data = forecast_eval,
+    aes(x = date, ymin = lower, ymax = upper),
+    fill = "skyblue", alpha = 0.3
+  ) +
+  # Forecast line
+  geom_line(
+    data = forecast_eval,
+    aes(x = date, y = forecast, color = "Forecast"),
+    linewidth = 1
+  ) +
+  # Observed in the holdout year
+  geom_line(
+    data = compare_df,
+    aes(x = date, y = actual, color = "Observed"),
+    linewidth = 0.8
+  ) +
+  # Recent training history
+  geom_line(
+    data = train_recent,
+    aes(x = ym, y = co2, color = "History"),
+    linewidth = 0.6
+  ) +
+  # Mark the forecast start. Use Date directly to avoid the warning.
+  geom_vline(xintercept = cutoff_date, linetype = "dashed", color = "red") +
+  annotate(
+    "text",
+    x = cutoff_date + 15,               # ~2 weeks into 2024
+    y = ymin + ypad,
+    label = "Forecast starts \u2192",
+    hjust = 0, color = "red", size = 3
+  ) +
+  scale_color_manual(
+    values = c("History" = "grey40", "Observed" = "black", "Forecast" = "blue")
+  ) +
+  labs(
+    title = "CO2 — Misspecification Task 3 (Linear μ + ARMA(1,1)) — 2024 Holdout",
+    subtitle = paste0("RMSE = ", round(rmse, 2), " ppm   |   MAE = ", round(mae, 2), " ppm"),
+    x = "Date", y = "CO2 (ppm)", color = NULL
+  ) +
+  coord_cartesian(
+    xlim = c(cutoff_date %m-% months(n_past_train), max(forecast_eval$date)),
+    ylim = c(ymin - ypad, ymax + ypad)
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
 ```
 
 ```{=tex}
-\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+\centering{\red{Question: What happens if both parts are misspecified?}}
 
 \begin{tcolorbox}
-There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
 
-We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
+Misspecification of \textit{both} the deterministic and stochastic parts will lead to predictive behavior that is very inconsistent with reality, and therefore, poor predictions. 
+
+In this example, we are missing quadratic and harmonic deterministic elements, and differencing and deeper lag variables for ARIMA. The result is an incredibly poor prediction. As we can see, in the absence of a well-defined stochastic model or a well-defined deterministic model, we lose the shape of the trend entriely. The interpretibility of the model also fades, as it becomes less clear just what the ARMA model is trying to capture.
+
+Misspecification of both deterministic and stochastic parts can be very unforgiving. As we see here, misspecifying both parts leads to significantly worse predictions than misspecifying either part. Our error metrics flag this model as the worst by far.
+\end{tcolorbox}
+```
+
+```{=tex}
+\begin{tcolorbox}
+Credit to Dr. Salvana on much of the code (from Lec3.R) used to generate this assisgnment.
 \end{tcolorbox}
 ```
