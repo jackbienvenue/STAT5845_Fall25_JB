@@ -1,0 +1,81 @@
+---
+title: "Homework 5 - Model Misspecification"
+author: Jack Bienvenue
+date: 20 October 2025
+format: pdf
+header-includes:
+  - \usepackage{tcolorbox}
+  - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
+  - \usepackage{xcolor}
+  - \newcommand{\red}[1]{\textcolor{red}{#1}}
+---
+
+```{r DATA-AND-PACKAGE-IMPORT}
+# PACKAGE IMPORT
+invisible(suppressWarnings(suppressMessages(lapply(c("ggplot2", "dplyr", 
+                                                     "tidyr", "RColorBrewer",
+                                                     "lubridate", "patchwork",
+                                                     "broom"), 
+                                            require, character.only = TRUE))))
+options(warn = -1)
+
+# DATA IMPORT
+co2_daily <- read.csv(
+  "./co2_daily_mlo.csv",
+  header = FALSE, skip = 32,
+  col.names = c("year","month","day","decimal_date","co2")
+) %>%
+# Build a proper Date from (year, month, day). Suppress warnings from odd rows.
+  mutate(date = suppressWarnings(make_date(year, month, day))) %>%
+  # Keep only valid dates and valid CO2 values
+  filter(!is.na(date), !is.na(co2)) %>%
+  arrange(date)
+```
+
+# Task 1: Misspecifying the Deterministic Part
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+
+\begin{tcolorbox}
+There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
+
+We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
+\end{tcolorbox}
+```
+
+# Task 2: Misspecifying the Stochastic Process
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+
+\begin{tcolorbox}
+There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
+
+We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
+\end{tcolorbox}
+```
+
+# Task 3: Misspecifying Deterministic, Stochastic Parts
+
+```{r}
+
+```
+
+```{=tex}
+\centering{\red{Question: Does the pattern look completely random, clustered, or regular?}}
+
+\begin{tcolorbox}
+There appears to be a number of clusters in the dataset, particularly in the Texarkana region, eastern Georgia, and between Orlando, FL and Miami, FL. There is another cluster offshore, southwest of Florida's Everglades. There also appears to be a longitudinal swath of the Southern United States with a density of lightning strikes, likely suggesting the movement of a storm. No-lightning ``cold spots" occupy much of the area that is outside of these Southern states. 
+
+We also notice sometihng that may be a data recording artifact. Around 25 degrees of latitude, there is a linear path of lightning strikes. Weather data collection is not a perfect science despite its amazing capabilities!
+\end{tcolorbox}
+```
