@@ -13,8 +13,7 @@ header-includes:
 ```{r DATA-AND-PACKAGE-IMPORT, echo=FALSE}
 # PACKAGE IMPORT
 invisible(suppressWarnings(suppressMessages(lapply(c("ggplot2", "dplyr", 
-                                                     "tidyr", "RColorBrewer",
-                                                     "lubridate", "patchwork",
+                                                     "tidyr", "lubridate",
                                                      "broom", "tseries",
                                                      "forecast"), 
                                             require, character.only = TRUE))))
@@ -26,7 +25,7 @@ co2_daily <- read.csv(
   header = FALSE, skip = 32,
   col.names = c("year","month","day","decimal_date","co2")
 ) %>%
-# Build a proper Date from (year, month, day). Suppress warnings from odd rows.
+  # Build a proper Date from (year, month, day). Suppress warnings from odd rows.
   mutate(date = suppressWarnings(make_date(year, month, day))) %>%
   # Keep only valid dates and valid CO2 values
   filter(!is.na(date), !is.na(co2)) %>%
@@ -86,8 +85,6 @@ co2_model <- co2_month %>%
 ############################################################
 # FORECAST EVALUATION — Leave out 2024 and forecast it
 ############################################################
-
-# --- Step 1: Split data ------------------------------------------------------
 cutoff_date <- as.Date("2024-01-01")
 
 train_data <- co2_month %>%
@@ -100,12 +97,10 @@ test_data <- co2_month %>%
 train_model <- train_data %>%
   mutate(
     year_num = year(ym) + (month(ym) - 0.5)/12,
-    t        = year_num - min(year_num)#,
-    #s1       = sin(2*pi*t),
-    #c1       = cos(2*pi*t)     # CHOP OUT HARMONICS FOR LINEAR TREND
+    t        = year_num - min(year_num)
   )
 
-m_train <- lm(co2 ~ t, data = train_model) # LINEAR ONLY
+m_train <- lm(co2 ~ t, data = train_model) # REMOVE HARMONICS, QUADRATIC TERM
 
 # --- Step 3: Compute residuals and fit ARIMA model ----------------------------
 resid_train <- augment(m_train, data = train_model)$.resid
@@ -119,11 +114,7 @@ last_t_train <- max(train_model$t)
 
 future_t <- data.frame(
   t = seq(last_t_train + 1/12, last_t_train + h_test/12, by = 1/12)
-) #%>%
-  #mutate(
-    #s1 = sin(2*pi*t),
-    #c1 = cos(2*pi*t)
-    #) # REMOVE HARMONICS
+)
 
 # Deterministic forecast
 mu_hat_future <- predict(m_train, newdata = future_t)
@@ -157,10 +148,6 @@ compare_df <- test_data %>%
 # --- Step 7: Compute evaluation metrics --------------------------------------
 rmse <- sqrt(mean((compare_df$actual - compare_df$forecast)^2, na.rm = TRUE))
 mae  <- mean(abs(compare_df$actual - compare_df$forecast), na.rm = TRUE)
-
-cat("Forecast evaluation for 2024:\n")
-cat("RMSE =", round(rmse, 3), "ppm\n")
-cat("MAE  =", round(mae, 3), "ppm\n")
 
 ############################################################
 # Zoomed evaluation plot — focus on recent window
@@ -215,7 +202,7 @@ ggplot() +
     values = c("History" = "grey40", "Observed" = "black", "Forecast" = "blue")
   ) +
   labs(
-    title = "CO2 — Misspecification Task 1 (Linear μ only) — 2024 Holdout",
+    title = "CO2 Misspec. Task 1 — (Linear mu only) — Holdout 2024 (Zoomed)",
     subtitle = paste0("RMSE = ", round(rmse, 2), " ppm   |   MAE = ", round(mae, 2), " ppm"),
     x = "Date", y = "CO2 (ppm)", color = NULL
   ) +
@@ -315,9 +302,9 @@ compare_df <- test_data %>%
 rmse <- sqrt(mean((compare_df$actual - compare_df$forecast)^2, na.rm = TRUE))
 mae  <- mean(abs(compare_df$actual - compare_df$forecast), na.rm = TRUE)
 
-cat("Forecast evaluation for 2024:\n")
-cat("RMSE =", round(rmse, 3), "ppm\n")
-cat("MAE  =", round(mae, 3), "ppm\n")
+#cat("Forecast evaluation for 2024:\n")
+#cat("RMSE =", round(rmse, 3), "ppm\n")
+#cat("MAE  =", round(mae, 3), "ppm\n")
 
 ############################################################
 # Zoomed evaluation plot — focus on recent window
@@ -372,7 +359,7 @@ ggplot() +
     values = c("History" = "grey40", "Observed" = "black", "Forecast" = "blue")
   ) +
   labs(
-    title = "CO₂ Forecast Evaluation — Holdout 2024 (Zoomed)",
+    title = "CO2 - Misspec. Task 2 (ARMA(1,1) eps.) - Holdout 2024",
     subtitle = paste0("RMSE = ", round(rmse, 2), " ppm   |   MAE = ", round(mae, 2), " ppm"),
     x = "Date", y = "CO₂ (ppm)", color = NULL
   ) +
@@ -382,7 +369,6 @@ ggplot() +
   ) +
   theme_minimal(base_size = 12) +
   theme(legend.position = "top")
-
 ```
 
 ```{=tex}
@@ -474,9 +460,9 @@ compare_df <- test_data %>%
 rmse <- sqrt(mean((compare_df$actual - compare_df$forecast)^2, na.rm = TRUE))
 mae  <- mean(abs(compare_df$actual - compare_df$forecast), na.rm = TRUE)
 
-cat("Forecast evaluation for 2024:\n")
-cat("RMSE =", round(rmse, 3), "ppm\n")
-cat("MAE  =", round(mae, 3), "ppm\n")
+#cat("Forecast evaluation for 2024:\n")
+#cat("RMSE =", round(rmse, 3), "ppm\n")
+#cat("MAE  =", round(mae, 3), "ppm\n")
 
 ############################################################
 # Zoomed evaluation plot — focus on recent window
@@ -531,7 +517,7 @@ ggplot() +
     values = c("History" = "grey40", "Observed" = "black", "Forecast" = "blue")
   ) +
   labs(
-    title = "CO2 — Misspecification Task 3 (Linear μ + ARMA(1,1)) — 2024 Holdout",
+    title = "CO2 — Misspec. Task 3 (Linear mu + ARMA(1,1)) — 2024 Holdout",
     subtitle = paste0("RMSE = ", round(rmse, 2), " ppm   |   MAE = ", round(mae, 2), " ppm"),
     x = "Date", y = "CO2 (ppm)", color = NULL
   ) +
