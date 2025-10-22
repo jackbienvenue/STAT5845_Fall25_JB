@@ -1,0 +1,140 @@
+---
+title: "Homework 6 - Random Fields"
+author: Jack Bienvenue
+date: 27 October 2025
+format: pdf
+header-includes:
+  - \usepackage{tcolorbox}
+  - \tcbset{colback=red!10!white, colframe=red!80!black, boxrule=0.5pt, arc=3pt, left=6pt, right=6pt, top=6pt, bottom=6pt}
+  - \usepackage{xcolor}
+  - \newcommand{\red}[1]{\textcolor{red}{#1}}
+---
+
+```{r, echo=FALSE}
+# Package Import
+invisible(suppressWarnings(suppressMessages(lapply(c("fields", "dplyr"), 
+                                            require, character.only = TRUE))))
+```
+
+# Problem 1
+
+```{r}
+besselK(0.1 / 0.1, 2) # h / Beta, nu
+
+# In problem 1, weak h_eff = 0.1, med h_eff = 0.3, strong h_eff = 0.7
+```
+
+## Problem 1.a)
+
+Consider a random field with an Exponential correlation function on the unit square.
+What are the values of the range parameter b to obtain effective ranges corresponding
+to weak / medium / strong dependence?
+
+```{=tex}
+\begin{tcolorbox}
+Here, we will use distance thresholds of 0.1, 0.3, and 0.7 to denote the range of weak, medium, and strong dependence, respectively. We will denote these thresholds as: $h_\text{eff, weak} = 0.1$, $h_\text{eff, medium} = 0.3$, and $h_\text{eff, strong} = 0.7$. Also, we will choose to use an effective range cutoff of $0.05$, this number represeting a small value where the influence of a distant point is becoming low, to help us find a distance at which distant points become essentially inconsequential.
+
+Since exponential correlation $C(\textbf{s}_1, \textbf{s}_2) = \text{exp}(\frac{-h}{b}),$ each $b$ can be found as $b = -\frac{h_\text{eff}}{\text{log}(0.05)}.$ 
+
+So, $b_\text{weak} = -\frac{0.1}{\text{log}(0.05)} = \textbf{0.033}.$ 
+
+For medium dependence, $b_\text{medium} = -\frac{0.3}{\text{log}(0.05)} = \textbf{0.100}$ 
+
+Finally, for strong dependence, $b_\text{strong} = -\frac{0.7}{\text{log}(0.05)} = \textbf{0.234}.$
+
+\end{tcolorbox}
+```
+
+## Problem 1.b)
+
+Redo a) for a Matérn correlation function with $\nu$ = 2.
+
+``` {r}
+#-------------NUMERICAL APPROXIMATION FUNCTION -----------------------------#
+obj_function <- function(par, sigma2 = 1, nu = 2, target_cov = 0.05,
+                         distance){
+  
+  # Argument default explanations:
+  ## sigma^2 as 1 (we are working w/ correlation function),
+  ## nu as 2 (given in problem)
+  ## target_cov as 0.05 (our threshold of small influence)
+  ## Distance is an assumed value for the effective range from the exp. cov.
+  
+  beta = exp(par) # ensure positive values only
+  #cat('Current beta value: ', beta, '\n')
+  
+  cov_val <- (sigma2 / (2^(nu - 1) * gamma(nu))) *
+    (distance / beta) ^nu * besselK(distance / beta, nu) # Matern cov. model 
+  
+  diff <- (cov_val - target_cov)^2
+  return(diff)
+}
+#---------------------------------------------------------------------------#
+
+# Prediction of weak dependence:
+init <- log(0.033) #initial beta parameter in log-scale (guess from exponential)
+fit <- optim(par = init, fn = obj_function, sigma2 = 1, nu = 2,
+  target_cov = 0.05, distance = 0.1,
+  control = list(trace = 5, maxit = 500),
+  method = "SANN"
+)
+beta_weak = exp(fit$par)
+
+print(paste("Attained beta for weak correlation:", round(beta_weak, 4)))
+```
+
+
+```{r}
+
+# Prediction of medium dependence:
+init <- log(0.1) 
+fit <- optim(par = init, fn = obj_function, sigma2 = 1, nu = 2,
+  target_cov = 0.05, distance = 0.3, # set distance as guess from exponential 
+  control = list(trace = 5, maxit = 500),
+  method = "SANN"
+)
+beta_med = exp(fit$par)
+
+print(paste("Attained beta for medium correlation:", round(beta_med, 4)))
+```
+
+```{r}
+# Prediction of high dependence:
+
+init <- log(0.234) # initial beta parameter in log-scale
+fit <- optim(par = init, fn = obj_function, sigma2 = 1, nu = 2,
+  target_cov = 0.05, distance = 0.7,
+  control = list(trace = 5, maxit = 500),
+  method = "SANN"
+)
+beta_high = exp(fit$par)
+
+print(paste("Attained beta for high correlation:", round(beta_high, 4)))
+```
+
+```{=tex}
+\begin{tcolorbox}
+The Matérn covariance function is a very effective covariance function for practical use, and as such, it is used in major applications like temperature forecasting. Let's repeat Problem 1.a, but this time we'll hunt for $\Beta$ values for the Matérn correlation function. Note that since we are using a Matérn \textit{correlation} function, we know that we are working with $\sigma^2 = 1$.
+
+This example is a little more complex than the exponential example, as the equation governing the Matérn correlation uses something called the second-kind, modified Bessel function.
+
+Matérn correlation with $\sigma^2 = 1$ and $\nu = 2$ can be written as $C(\textbf{h}) = \frac{1}{2}(\frac{h_\text{eff}}{\beta})^2K_2(\frac{h_\text{eff}}{\beta})$. Here, $K_\nu$ represnts the modified Bessel function of the second kind and is of order $2$ in this example, hence $K_2$. 
+
+An expression for $\beta$ cannot be obtained as an analytical solution. So, we have to numerically approxmiate our values. We do this, we use a simulated annealing global optimzation and we will initialize our prediction of the log-scaled beta parameter as 0.033, 0.100, and 0.234 as these seem to be reasonable starting predictions given that the related exponential function had these values for $b$ for the weak, medium, and high depenedence situations respectively. 
+
+After numerically fitting values for Beta for weak, medium, and high dependence, we obtain $b_\text{weak} = 0.0191$, $b_\text{medium} = 0.0476$, and $b_\text{strong} = 0.1325$.
+\end{tcolorbox}
+```
+
+## Problem 1.c)
+
+What is the effective range of a random field with a Matérn correlation function with $\nu$ = 0.7 and $\beta$ = 0.2?
+
+```{=tex}
+\begin{tcolorbox}
+For $\nu = 0.7$ and $\beta = 0.2$, we can find the effective range of a random field generated with a Matérn correlation function by finding $h_\text{eff}$ such that $C(\textbf{h}) = 0.05$, an agreeable cutoff for an effective range. 
+
+Again, we must come up with a numerical solution instead of an analytical solution as we run into the same problem 
+
+\end{tcolorbox}
+```
