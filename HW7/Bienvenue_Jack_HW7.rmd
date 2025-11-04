@@ -1,0 +1,285 @@
+---
+title: "STAT 5845 Homework 7"
+subtitle: "November 10, 2025"
+output:
+  bookdown::pdf_document2:
+    latex_engine: pdflatex
+    keep_tex: true 
+header-includes:
+  - \usepackage{titling}
+  - \setlength{\droptitle}{1em} 
+fontsize: 12pt
+---
+
+# Preliminaries
+
+```{r, echo=FALSE}
+# Package Import
+invisible(lapply(c("dplyr", "fields", "MASS"), 
+  function(pkg) suppressPackageStartupMessages(library(pkg, 
+                                                character.only = TRUE))))
+
+```
+
+## Simulate a Gaussian random field on a 60 × 60 grid from a Matérn covariance
+
+```{r}
+# Start by building a 60x60 grid of locations
+x <- seq(0, 1, length.out = 60)
+y <- seq(0, 1, length.out = 60)
+locs <- expand.grid(x = x, y = y) %>% as.matrix()
+n.loc <- nrow(locs)
+
+# True parameters to use for simulating 
+sigma2_true <- 1     # partial sill
+beta_true   <- 0.2   # range parameter
+nu_true     <- 1.0   # smoothness
+tausq_true  <- 0     # nugget = 0 for simulation
+mu_true     <- rep(0, n.loc)
+
+# Build distance matrix
+distance_matrix <- as.matrix(dist(locs))
+
+# Build Matern Covaraince
+covariance_matrix <- (sigma2_true / (2^(nu_true - 1) * gamma(nu_true))) *
+  (distance_matrix / beta_true)^nu_true * besselK(distance_matrix / beta_true, nu_true)
+## Handle zero distances
+diag(covariance_matrix) <- sigma2_true + tausq_true
+
+# Set random seed
+set.seed(124)
+
+# Simulate Random Field using Matern Covariance Function
+Z <- mvrnorm(1, mu = mu_true, Sigma = covariance_matrix)
+
+dev.new(width = 6, height = 6)
+quilt.plot(locs[,1], locs[,2], Z, nx = 60, ny = 60)
+```
+
+## Randomly select 100 locations for training; use the remaining locations as testing.
+
+```{r}
+# Select 100 Random Points as training points
+n.train <- 100
+train_idx <- sample.int(n.loc, n.train) # randomly select 100 integers from 1 
+                                        # to n = number of grid points
+
+# Set the rest of the points in the grid to be used for kriging later
+test_idx <- setdiff(seq_len(n.loc), train_idx)
+train_locs <- locs[train_idx, , drop = FALSE]
+train_Z <- Z[train_idx]
+train_D <- as.matrix(dist(train_locs))
+D_all_train <- fields::rdist(locs, train_locs)
+```
+
+## Estimate parameters by MLE on the training data under three models: Exponential, Gaussian, and Matérn
+
+```{r}
+# MLE Estimation, Exponential
+#-------------------- EXPONENTIAL --------------------------------------
+# Define negative log-likelihood function for MLE estimation via "optim"
+nll_exponential <- function(par) {
+  tausq   <- par[1]^2          # nugget variance (forced ≥ 0)
+  sigmasq <- par[2]^2          # partial sill
+  beta    <- exp(par[3])       # range parameter (> 0)
+  nu      <- par[4]            # smoothness
+  mu_val  <- par[5]            # constant mean
+  
+  # monitor parameter progress
+  cat(sprintf("tau^2 = %.4f, sigma^2 = %.4f, 
+              beta = %.4f, nu = %.4f, mu = %.4f\n",
+              tausq, sigmasq, beta, nu, mu_val))
+  
+  mu <- rep(mu_val, n.loc)
+  
+  dist_mat <- distance_matrix
+  # Build covariance matrix
+  C <- sigmasq * exp(-dist_mat / beta)
+  diag(C) <- sigmasq + tausq
+  
+  # Cholesky decomposition for log-likelihood
+  L <- t(chol(C))
+  log.det.cov <- 2 * sum(log(diag(L)))
+  z.new <- forwardsolve(L, Z - mu)
+  inner.prod <- sum(z.new^2)
+  
+  # Negative Gaussian log-likelihood
+  nll_value <- 0.5 * n.loc * log(2 * pi) + 0.5 * log.det.cov + 0.5 * inner.prod
+  return(nll_value)
+}
+#--------------------------------------------------------------#
+
+```
+
+```{r}
+# MLE Estimation, Gaussian
+#-------------------- GAUSSIAN -----------------------------------------
+# Define negative log-likelihood function for MLE estimation via "optim"
+nll_gaussian <- function(par) {
+  tausq   <- par[1]^2          # nugget variance (forced ≥ 0)
+  sigmasq <- par[2]^2          # partial sill
+  beta    <- exp(par[3])       # range parameter (> 0)
+  nu      <- par[4]            # smoothness
+  mu_val  <- par[5]            # constant mean
+  
+  # monitor parameter progress
+  cat(sprintf("tau^2 = %.4f, sigma^2 = %.4f, 
+              beta = %.4f, nu = %.4f, mu = %.4f\n",
+              tausq, sigmasq, beta, nu, mu_val))
+  
+  mu <- rep(mu_val, n.loc)
+  
+  dist_mat <- distance_matrix
+  # Build covariance matrix
+  C <- sigmasq * exp(-(dist_mat / beta)^2)
+  diag(C) <- sigmasq + tausq
+  
+  # Cholesky decomposition for log-likelihood
+  L <- t(chol(C))
+  log.det.cov <- 2 * sum(log(diag(L)))
+  z.new <- forwardsolve(L, Z - mu)
+  inner.prod <- sum(z.new^2)
+  
+  # Negative Gaussian log-likelihood
+  nll_value <- 0.5 * n.loc * log(2 * pi) + 0.5 * log.det.cov + 0.5 * inner.prod
+  return(nll_value)
+}
+#--------------------------------------------------------------#
+
+```
+
+```{r}
+# MLE Estimation, Matern
+#-------------------- MATERN -------------------------------------------
+# Define negative log-likelihood function for MLE estimation via "optim"
+nll_matern <- function(par) {
+  tausq   <- par[1]^2          # nugget variance (forced ≥ 0)
+  sigmasq <- par[2]^2          # partial sill
+  beta    <- exp(par[3])       # range parameter (> 0)
+  nu      <- par[4]            # smoothness
+  mu_val  <- par[5]            # constant mean
+  
+  # monitor parameter progress
+  cat(sprintf("tau^2 = %.4f, sigma^2 = %.4f, 
+              beta = %.4f, nu = %.4f, mu = %.4f\n",
+              tausq, sigmasq, beta, nu, mu_val))
+  
+  mu <- rep(mu_val, n.loc)
+  
+  dist_mat <- distance_matrix
+  # Build covariance matrix
+  C <- (sigmasq / (2^(nu - 1) * gamma(nu))) *
+      (dist_mat / beta)^nu * besselK(dist_mat / beta, nu)
+  diag(C) <- sigmasq + tausq
+  
+  # Cholesky decomposition for log-likelihood
+  L <- t(chol(C))
+  log.det.cov <- 2 * sum(log(diag(L)))
+  z.new <- forwardsolve(L, Z - mu)
+  inner.prod <- sum(z.new^2)
+  
+  # Negative Gaussian log-likelihood
+  nll_value <- 0.5 * n.loc * log(2 * pi) + 0.5 * log.det.cov + 0.5 * inner.prod
+  return(nll_value)
+}
+#--------------------------------------------------------------#
+
+# Fit parameters by minimizing NLL
+init <- c(0.1, 1, log(0.3), 0.8, 0)
+fit <- optim(init, nll_matern, control = list(trace = 3, maxit = 5000))
+#fit <- optim(par = init, fn = nll, method = "BFGS", control = list(maxit = 5000))
+
+# Verify Convergence
+str(fit)
+
+# Extract and print true vs estimated
+est_par <- fit$par
+
+results <- data.frame(
+  Parameter = c("tau^2", "sigma^2", "beta (range)", "nu (smoothness)", "mu (mean)"),
+  True = c(tausq_true, sigma2_true, beta_true, nu_true, 0),
+  Estimated = c(
+    est_par[1]^2,
+    est_par[2]^2,
+    exp(est_par[3]),
+    est_par[4],
+    est_par[5]
+  )
+)
+
+print("True vs. Estimated Parameters:")
+print(results, digits = 4, row.names = FALSE)
+
+# Plot Matérn covariance — True vs MLE 
+
+# Distance grid for curves
+dgrid <- seq(0, max(distance_matrix), length.out = 300)
+
+# TRUE curve (simulation parameters)
+cov_true <- (sigma2_true / (2^(nu_true - 1) * gamma(nu_true))) *
+  (dgrid / beta_true)^nu_true * besselK(dgrid / beta_true, nu_true)
+cov_true[dgrid == 0] <- NA
+nugget_true <- sigma2_true + tausq_true
+
+# MLE parameters
+tau2_mle   <- est_par[1]^2
+sigma2_mle <- est_par[2]^2
+beta_mle   <- exp(est_par[3])
+nu_mle     <- est_par[4]
+
+# MLE curve
+cov_mle <- (sigma2_mle / (2^(nu_mle - 1) * gamma(nu_mle))) *
+  (dgrid / beta_mle)^nu_mle * besselK(dgrid / beta_mle, nu_mle)
+cov_mle[dgrid == 0] <- NA
+nugget_mle <- sigma2_mle + tau2_mle
+
+# Y limits 
+ymax <- max(c(cov_true, cov_mle, nugget_true, nugget_mle), na.rm = TRUE)
+ymin <- min(c(cov_true, cov_mle, 0), na.rm = TRUE)
+
+plot(NA, xlim = range(dgrid), ylim = c(ymin, ymax),
+     xlab = "Distance", ylab = "Covariance",
+     main = "Matérn Covariance: True vs MLE")
+
+lines(dgrid, cov_true, lwd = 2, col = "darkgreen")
+lines(dgrid, cov_mle,  lwd = 2, col = "red")
+
+# Nugget points at h = 0 
+points(0, nugget_true, pch = 15, col = "darkgreen", cex = 1.2)
+points(0, nugget_mle,  pch = 17, col = "red",       cex = 1.2)
+
+legend("topright",
+       legend = c("True Matérn", "MLE Matérn",
+                  expression(sigma^2 + tau^2~"(True)"),
+                  expression(sigma^2 + tau^2~"(MLE)")),
+       lty    = c(1, 1, NA, NA),
+       pch    = c(NA, NA, 15, 17),
+       col    = c("darkgreen", "red", "darkgreen", "red"),
+       bty    = "n")
+```
+
+## Perform kriging to predict at all grid locations for each fitted model
+
+# Task 1:
+
+```{r}
+
+```
+
+# Task 2:
+
+```{r}
+
+```
+
+# Task 3: 
+
+```{r}
+
+```
+
+# Concluding Question: What do you observe about the kriging predictions under the Exponential, Gaussian, and Matérn models? Which performs best based on the MSE, and why?
+
+\textbf{ANSWER}
+
+\emph{Special credit to Dr. Salvaña for providing much of the relevant code for this assignment.}
