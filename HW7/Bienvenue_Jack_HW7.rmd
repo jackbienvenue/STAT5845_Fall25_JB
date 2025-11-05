@@ -23,7 +23,7 @@ invisible(lapply(c("dplyr", "fields", "MASS"),
 
 ## Simulate a Gaussian random field on a 60 × 60 grid from a Matern covariance
 
-```{r}
+```{r, echo=FALSE}
 # Start by building a 60x60 grid of locations
 x <- seq(0, 1, length.out = 60)
 y <- seq(0, 1, length.out = 60)
@@ -77,7 +77,9 @@ D_all_train <- fields::rdist(locs, train_locs)
 
 # Exponential
 
-```{r}
+## MLE Estimation Results & Check for Convergence
+
+```{r, echo=FALSE}
 # MLE Estimation, Exponential
 #-------------------- EXPONENTIAL --------------------------------------
 
@@ -118,11 +120,11 @@ nll_exponential <- function(par) {
 init <- c(0.01, 1, log(0.1), 0)
 ```
 
-```{r, results='hide', message=FALSE, warning=FALSE}
+```{r, results='hide', message=FALSE, warning=FALSE, echo=FALSE}
 fit <- optim(init, nll_exponential, control = list(trace = 0, maxit = 5000))
 ```
 
-```{r}
+```{r, echo=FALSE}
 # Verify Convergence
 str(fit)
 
@@ -158,39 +160,9 @@ tau2_mle   <- est_par[1]^2
 sigma2_mle <- est_par[2]^2
 beta_mle   <- exp(est_par[3])
 nu <- 0.5
-
-# MLE curve
-cov_mle <- sigma2_mle * exp(-dgrid/beta_mle)
-  
-cov_mle[dgrid == 0] <- NA
-nugget_mle <- sigma2_mle + tau2_mle
-
-# Y limits 
-ymax <- max(c(cov_true, cov_mle, nugget_true, nugget_mle), na.rm = TRUE)
-ymin <- min(c(cov_true, cov_mle, 0), na.rm = TRUE)
-
-plot(NA, xlim = range(dgrid), ylim = c(ymin, ymax),
-     xlab = "Distance", ylab = "Covariance",
-     main = "Exponential Covariance: True vs MLE")
-
-lines(dgrid, cov_true, lwd = 2, col = "darkgreen")
-lines(dgrid, cov_mle,  lwd = 2, col = "red")
-
-# Nugget points at h = 0 
-points(0, nugget_true, pch = 15, col = "darkgreen", cex = 1.2)
-points(0, nugget_mle,  pch = 17, col = "red",       cex = 1.2)
-
-legend("topright",
-       legend = c("True Exponential", "MLE Exponential",
-                  expression(sigma^2 + tau^2~"(True)"),
-                  expression(sigma^2 + tau^2~"(MLE)")),
-       lty    = c(1, 1, NA, NA),
-       pch    = c(NA, NA, 15, 17),
-       col    = c("darkgreen", "red", "darkgreen", "red"),
-       bty    = "n")
 ```
 
-```{r}
+```{r, echo=FALSE}
 #------------------ KRIGING PHASE -----------------------------------
 
 # Build Sigma(\hat{theta}) for training data (retrieve MLE estiamtes again)
@@ -232,7 +204,9 @@ var_all <- C_ss_diag - rowSums(tmp * K_st)
 mse_test <- mean((pred_all[test_idx] - Z[test_idx])^2)
 ```
 
-``` {r fig.width=8.5, fig.height=2.75}
+## Kriging & Corresponding Plot
+
+``` {r fig.width=8.5, fig.height=2.5, echo=FALSE}
 # Plots (Truth | Training | Prediction + MSE)
 par(mfrow = c(1,3))
 quilt.plot(locs[,1], locs[,2], Z, nx = length(x), 
@@ -251,7 +225,9 @@ print(paste("Exponential Covariance MSE:", round(mse_test,4)))
 
 # Gaussian
 
-```{r}
+## MLE Estimation Results & Check for Convergence
+
+```{r, echo=FALSE}
 # MLE Estimation, Gaussian
 #-------------------- GAUSSIAN -----------------------------------------
 # Define negative log-likelihood function for MLE estimation via "optim"
@@ -288,11 +264,11 @@ nll_gaussian <- function(par) {
 init <- c(0.01, 1, log(0.1), 0)
 ```
 
-```{r, results='hide', message=FALSE, warning=FALSE}
+```{r, results='hide', message=FALSE, warning=FALSE, echo=FALSE}
 fit <- optim(init, nll_gaussian, control = list(trace = 0, maxit = 5000))
 ```
 
-```{r}
+```{r, echo=FALSE}
 # Verify Convergence
 str(fit)
 
@@ -327,38 +303,9 @@ nugget_true <- sigma2_true + tausq_true
 tau2_mle   <- est_par[1]^2
 sigma2_mle <- est_par[2]^2
 beta_mle   <- exp(est_par[3])
-
-# MLE curve
-cov_mle <- sigma2_mle * exp(-(dgrid/beta_mle)**2)
-cov_mle[dgrid == 0] <- NA
-nugget_mle <- sigma2_mle + tau2_mle
-
-# Y limits 
-ymax <- max(c(cov_true, cov_mle, nugget_true, nugget_mle), na.rm = TRUE)
-ymin <- min(c(cov_true, cov_mle, 0), na.rm = TRUE)
-
-plot(NA, xlim = range(dgrid), ylim = c(ymin, ymax),
-     xlab = "Distance", ylab = "Covariance",
-     main = "Gaussian Covariance: True vs MLE")
-
-lines(dgrid, cov_true, lwd = 2, col = "darkgreen")
-lines(dgrid, cov_mle,  lwd = 2, col = "red")
-
-# Nugget points at h = 0 
-points(0, nugget_true, pch = 15, col = "darkgreen", cex = 1.2)
-points(0, nugget_mle,  pch = 17, col = "red",       cex = 1.2)
-
-legend("topright",
-       legend = c("True Gaussian", "MLE Gaussian",
-                  expression(sigma^2 + tau^2~"(True)"),
-                  expression(sigma^2 + tau^2~"(MLE)")),
-       lty    = c(1, 1, NA, NA),
-       pch    = c(NA, NA, 15, 17),
-       col    = c("darkgreen", "red", "darkgreen", "red"),
-       bty    = "n")
 ```
 
-```{r}
+```{r, echo=FALSE}
 #------------------ KRIGING PHASE -----------------------------------
 
 # Extract MLE parameter estimates
@@ -401,7 +348,9 @@ var_all <- C_ss_diag - rowSums(tmp * K_st)
 mse_test <- mean((pred_all[test_idx] - Z[test_idx])^2)
 ```
 
-``` {r fig.width=8.5, fig.height=2.75}
+## Kriging & Corresponding Plot
+
+``` {r fig.width=8.5, fig.height=2.5, echo=FALSE}
 # Visualization
 par(mfrow = c(1,3))
 quilt.plot(locs[,1], locs[,2], Z, nx = length(x), ny = length(y),
@@ -420,7 +369,9 @@ print(paste("Gaussian Covariance MSE:", round(mse_test,4)))
 
 # Matern
 
-```{r}
+## MLE Estimation Results & Check for Convergence
+
+```{r, echo=FALSE}
 # MLE Estimation, Matern
 #-------------------- MATERN -------------------------------------------
 # Define negative log-likelihood function for MLE estimation via "optim"
@@ -460,11 +411,11 @@ nll_matern <- function(par) {
 init <- c(0.1, 1, log(0.1), 0.8, 0)
 ```
 
-```{r, results='hide', message=FALSE, warning=FALSE}
+```{r, results='hide', message=FALSE, warning=FALSE, echo=FALSE}
 fit <- optim(init, nll_matern, control = list(trace = 0, maxit = 5000))
 ```
 
-```{r}
+```{r, echo=FALSE}
 # Verify Convergence
 str(fit)
 
@@ -503,39 +454,9 @@ tau2_mle   <- est_par[1]^2
 sigma2_mle <- est_par[2]^2
 beta_mle   <- exp(est_par[3])
 nu_mle     <- est_par[4]
-
-# MLE curve
-cov_mle <- (sigma2_mle / (2^(nu_mle - 1) * gamma(nu_mle))) *
-  (dgrid / beta_mle)^nu_mle * besselK(dgrid / beta_mle, nu_mle)
-cov_mle[dgrid == 0] <- NA
-nugget_mle <- sigma2_mle + tau2_mle
-
-# Y limits 
-ymax <- max(c(cov_true, cov_mle, nugget_true, nugget_mle), na.rm = TRUE)
-ymin <- min(c(cov_true, cov_mle, 0), na.rm = TRUE)
-
-plot(NA, xlim = range(dgrid), ylim = c(ymin, ymax),
-     xlab = "Distance", ylab = "Covariance",
-     main = "Matern Covariance: True vs MLE")
-
-lines(dgrid, cov_true, lwd = 2, col = "darkgreen")
-lines(dgrid, cov_mle,  lwd = 2, col = "red")
-
-# Nugget points at h = 0 
-points(0, nugget_true, pch = 15, col = "darkgreen", cex = 1.2)
-points(0, nugget_mle,  pch = 17, col = "red",       cex = 1.2)
-
-legend("topright",
-       legend = c("True Matern", "MLE Matern",
-                  expression(sigma^2 + tau^2~"(True)"),
-                  expression(sigma^2 + tau^2~"(MLE)")),
-       lty    = c(1, 1, NA, NA),
-       pch    = c(NA, NA, 15, 17),
-       col    = c("darkgreen", "red", "darkgreen", "red"),
-       bty    = "n")
 ```
 
-```{r}
+```{r, echo=FALSE}
 #------------------ KRIGING PHASE -----------------------------------
 
 # Extract MLE parameter estimates
@@ -583,7 +504,9 @@ var_all <- C_ss_diag - rowSums(tmp * K_st)
 mse_test <- mean((pred_all[test_idx] - Z[test_idx])^2)
 ```
 
-``` {r fig.width=8.5, fig.height=2.75}
+## Kriging & Corresponding Plot
+
+``` {r fig.width=8.5, fig.height=2.5, echo=FALSE}
 # Visualization
 par(mfrow = c(1,3))
 quilt.plot(locs[,1], locs[,2], Z, nx = length(x), ny = length(y),
