@@ -1,16 +1,23 @@
 ---
-author: Jack Bienvenue
-title: Mapping US NOAA GHCN-Daily Locations
-date: 1 October 2025
-output: html
+title: "Mapping US NOAA GHCN-Daily Locations"
+author: "Jack Bienvenue"
+date: "1 October 2025"
+format: html
 ---
 
 In this file, we will quickly view the locations
-``` {python}
+```{python}
 # Package Import
 import folium
 import pandas as pd
 import geopandas as gpd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import os
+import numpy as np
 
 # Data Import
 city_info = pd.read_csv("../data/city_info.csv")
@@ -18,18 +25,62 @@ city_info = pd.read_csv("../data/city_info.csv")
 
 Build a quick map to view the locations:
 
-``` {python}
-map_center = [city_info['Lat'].mean(), city_info['Lon'].mean()]
-m = folium.Map(location=map_center, zoom_start=4)
+```{python}
+# Define bounding box limits
+lon_min, lon_max = -95, -75
+lat_min, lat_max = 30, 44
 
-# Add weather stations points to map
-for _, row in city_info.iterrows():
-    folium.Marker(
-        location=[row['Lat'], row['Lon']],
-        popup=row['Name']
-    ).add_to(m)
+# Filter data to only include stations within the bounding box
+city_info_filtered = city_info[
+    (city_info['Lon'] >= lon_min) & (city_info['Lon'] <= lon_max) &
+    (city_info['Lat'] >= lat_min) & (city_info['Lat'] <= lat_max)
+]
 
-# View map
+# Define special cities to highlight
+highlight_cities = ["Asheville", "Chattanooga", "Bluefield", "Beckley"]
+
+# Create base map centered on filtered locations
+center_lat = (lat_min + lat_max) / 2
+center_lon = (lon_min + lon_max) / 2
+m = folium.Map(location=[center_lat, center_lon], zoom_start=5)
+
+# Add filtered city markers
+for _, row in city_info_filtered.iterrows():
+    if row['Name'] in highlight_cities:
+        # Highlighted cities — larger and red
+        folium.CircleMarker(
+            location=[row['Lat'], row['Lon']],
+            radius=9,               # larger size
+            color='darkred',        # outline color
+            fill=True,
+            fill_color='red',
+            fill_opacity=0.9,
+            weight=2,
+            popup=row['Name']
+        ).add_to(m)
+    else:
+        # Regular cities — smaller and blue
+        folium.CircleMarker(
+            location=[row['Lat'], row['Lon']],
+            radius=5,
+            color='blue',
+            fill=True,
+            fill_color='blue',
+            fill_opacity=1,
+            weight=1,
+            popup=row['Name']
+        ).add_to(m)
+
+# Add red rectangle bounding box
+bounds = [[lat_min, lon_min], [lat_max, lon_max]]
+folium.Rectangle(
+    bounds=bounds,
+    color='red',
+    weight=2,
+    fill=False
+).add_to(m)
+
+# Display the map
 m
 
 # Save map to use in the presentation
@@ -51,3 +102,183 @@ In addition, we know from our knowledge of the destruction Helene caused that th
 2. Chattanooga, TN
 3. Bluefield, WV
 4. Beckley, WV
+
+Let's take historical weather data from each of these selected weather stations, and make time series plots of precipitation:
+
+``` {python}
+# Define weather-retrieving and time series plotting function:
+
+def station_time_series_plot(station_name):
+
+    '''
+    ARGUMENT:
+    station_name -- string -- the name (town name ONLY, no ", XX" state name attachment) of a weather station in ROI
+        * Note: Capitalize the first letter, e.g. "Asheville"
+    '''
+  
+    # Retrieve weather station data
+    ## build file path
+    base_dir = os.path.join("..", "data", "ghcn_roi_daily_data")
+    file_path = os.path.join(base_dir, f"{station_name}.csv")
+    
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"No CSV file found for station '{station_name}' at {file_path}")
+    
+    ## read CSV file into dataframe
+    df = pd.read_csv(file_path)
+    def parse_custom_year(date_str):
+        try:
+            parts = date_str.split("/")
+            mm, dd, yy = int(parts[0]), int(parts[1]), int(parts[2])
+            
+            # Apply custom rule for years
+            if 59 <= yy <= 99:
+                year = 1900 + yy
+            else:  # 00–25
+                year = 2000 + yy
+            
+            return pd.Timestamp(year=year, month=mm, day=dd)
+        except Exception:
+            return pd.NaT
+
+    # Apply to the column
+    df["date"] = df["date"].apply(parse_custom_year)
+    ## Flag difference in days (to later avoid plotting inconsistencies for gaps)
+    df["date_diff"] = df["date"].diff().dt.days
+
+    # Add data required for 3-day rolling precip curve
+    rolling_window = 3
+    rolling_sum = df["precipitation"].rolling(window=rolling_window, min_periods=1).sum()
+
+
+    ## ID gaps in time series to prevent plotting later:
+    valid = [True] * len(df)
+
+    for i in range(len(df)):
+        # Look at the last `rolling_window-1` diffs
+        if i >= 1:
+            diffs = df["date_diff"].iloc[max(1, i-rolling_window+1):i+1]
+            if (diffs > 1).any():  # gap detected
+                valid[i] = False
+
+    df["precip_3day_sum"] = rolling_sum
+    df.loc[~np.array(valid), "precip_3day_sum"] = np.nan
+
+    # Conversion constant
+    MM_TO_INCH = 1 / 25.4
+
+    # Create subplot layout with secondary y-axes enabled
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        subplot_titles=(
+            "Daily Precipitation",
+            "3-Day Rolling Sum of Precipitation"
+        ),
+        specs=[[{"secondary_y": True}], [{"secondary_y": True}]]
+    )
+
+    # --- Top plot: daily values ---
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["precipitation"],
+            mode="lines",
+            name="Daily Precipitation (mm)",
+            line=dict(color="#1f77b4")
+        ),
+        row=1, col=1, secondary_y=False
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["precipitation"] * MM_TO_INCH,
+            mode="lines",
+            name="Daily Precipitation (in)",
+            line=dict(color="#1f77b4", dash="dot"),
+            opacity=0.6
+        ),
+        row=1, col=1, secondary_y=True
+    )
+
+    fig.update_yaxes(showgrid=False, row=1, col=1, secondary_y=True)
+
+    # --- Bottom plot: 3-day rolling sum ---
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["precip_3day_sum"],
+            mode="lines",
+            name="3-Day Rolling Sum (mm)",
+            line=dict(color="#ff7f0e")
+        ),
+        row=2, col=1, secondary_y=False
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=df["date"],
+            y=df["precip_3day_sum"] * MM_TO_INCH,
+            mode="lines",
+            name="3-Day Rolling Sum (in)",
+            line=dict(color="#ff7f0e", dash="dot"),
+            opacity=0.6
+        ),
+        row=2, col=1, secondary_y=True
+    )
+
+    # Layout and styling
+    fig.update_layout(
+        title=dict(
+            text=f"Historical Precipitation Time Series - {station_name}",
+            x=0.5,
+        ),
+        template="plotly_white",
+        hovermode="x unified",
+        font=dict(
+        family="Helvetica, Arial, sans-serif",  # primary font + fallbacks
+        size=14,        # global font size
+        color="black"   # font color
+        ),
+        height=750,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+        margin=dict(t=120, l=60, r=60, b=60)
+    )
+    fig.update_yaxes(showgrid=False, row=2, col=1, secondary_y=True)
+
+    # Axis labels
+    fig.update_yaxes(title_text="Precipitation (mm)", row=1, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="Precipitation (in)", row=1, col=1, secondary_y=True)
+    fig.update_yaxes(title_text="3-Day Sum (mm)", row=2, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="3-Day Sum (in)", row=2, col=1, secondary_y=True)
+    fig.update_xaxes(title_text="Date", row=2, col=1)
+
+    return fig
+```
+
+
+```{python}
+## Asheville, NC
+asheville_time_series_precip_plot = station_time_series_plot("Asheville")
+asheville_time_series_precip_plot
+```
+
+```{python}
+## Chattanooga, TN
+chattanooga_time_series_precip_plot = station_time_series_plot("Chattanooga")
+chattanooga_time_series_precip_plot
+```
+
+```{python}
+## Beckley, WV
+beckley_time_series_precip_plot = station_time_series_plot("Beckley")
+beckley_time_series_precip_plot
+```
+
+```{python}
+## Bluefield, WV
+bluefield_time_series_precip_plot = station_time_series_plot("Bluefield")
+bluefield_time_series_precip_plot
+```
