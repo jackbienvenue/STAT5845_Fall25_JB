@@ -126,23 +126,9 @@ def station_time_series_plot(station_name):
     
     ## read CSV file into dataframe
     df = pd.read_csv(file_path)
-    def parse_custom_year(date_str):
-        try:
-            parts = date_str.split("/")
-            mm, dd, yy = int(parts[0]), int(parts[1]), int(parts[2])
-            
-            # Apply custom rule for years
-            if 59 <= yy <= 99:
-                year = 1900 + yy
-            else:  # 00–25
-                year = 2000 + yy
-            
-            return pd.Timestamp(year=year, month=mm, day=dd)
-        except Exception:
-            return pd.NaT
 
     # Apply to the column
-    df["date"] = df["date"].apply(parse_custom_year)
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
     ## Flag difference in days (to later avoid plotting inconsistencies for gaps)
     df["date_diff"] = df["date"].diff().dt.days
 
@@ -263,6 +249,7 @@ def station_time_series_plot(station_name):
 ## Asheville, NC
 asheville_time_series_precip_plot = station_time_series_plot("Asheville")
 asheville_time_series_precip_plot
+asheville_time_series_precip_plot.write_html("../figures/precipitation_time_series/asheville_precip_plot.html")
 ```
 
 ```{python}
@@ -281,4 +268,5 @@ beckley_time_series_precip_plot
 ## Bluefield, WV
 bluefield_time_series_precip_plot = station_time_series_plot("Bluefield")
 bluefield_time_series_precip_plot
+bluefield_time_series_precip_plot.write_html("../figures/precipitation_time_series/bluefield_precip_plot.html")
 ```
