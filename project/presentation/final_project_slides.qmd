@@ -56,10 +56,19 @@ preview-links: false
   margin: 0 auto;            /* center in parent */
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* optional: soft drop shadow */
 }
+
+.image-box3 {
+  background-color: rgba(250, 250, 250, 0.7); /* darker gray with 70% opacity */
+  padding: 20px;
+  border-radius: 12px;       /* rounded corners for a soft look */
+  display: inline-block;     /* shrink to fit content */
+  margin: 0 auto;            /* center in parent */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* optional: soft drop shadow */
+}
 </style>
 <!---------------------------------------------------------------->
 
-<section data-auto-animate data-background="images/helene_over_us.gif" data-background-repeat="repeat" data-background-size="1000px">
+<section data-auto-animate data-background="images/helene_over_us.gif" data-background-repeat="repeat" data-background-size="1150px">
   <h2 style="text-align: center;">Somtimes, Only Extremes Matter</h2>
 
   <div class="image-box">
@@ -113,7 +122,7 @@ preview-links: false
          data-background-repeat="repeat" 
          data-background-size="1250px">
 
-<div class="image-box2 fragment">
+<div class="image-box2 fragment" style="text-align: center">
 <h3>How do we manage prediction of extreme values?</h3>
 </div>
 
@@ -129,14 +138,23 @@ preview-links: false
   <p>
   Generalized Extreme Value Distributions
   </p>
-  <img src="images/example1.jpg" alt="Example 1">
+
+  <ul>
+  <li>Includes Distributions:</li>
+    <ul>
+      <li>Weibull</li>
+      <li>Fréchet</li>
+      <li>Gumbel</li>
+    </ul>
+  </ul>
+  
 </div>
 
 <div class="col">
   <p>
     Generalized Pareto Distributions
   </p>
-  <img src="images/example2.jpg" alt="Example 2">
+  <img src="images/GPD_pdf.png" alt="GPD PDF Examples">
 </div>
 
 </div>
@@ -146,20 +164,75 @@ preview-links: false
 <section>
 <h3>Why Extreme Value Distributions?</h3>
 
+<div class="image-box3">
+<img src="images/exponential_fit_failure_display.png" style="display: block; margin: 0 auto; width: 70%;">
+</div>
+
 </section>
 
 <section>
-<h3>How do you Model a Distribution's <em>Tails</em>?</h3>
+<h3>How do you Model Distributions' <em>Tails</em>?</h3>
+
+<h2 style="text-align: center; color: forestgreen">GPD Distribution Style</h2>
+
+Daily precipitation $\rightarrow$ random variable $X$; 
+
+Exceedance threshold $u$; 
+
+Exceedance daily precipitations $\rightarrow$ $Y = X - u | X > u$.
+
+
+Using Extreme Value Theory, the distribution of the *exceedances* can be modeled approximately by some special distributions. One is the Generalized Pareto Distribution:
+
+$$
+P(Y \lt y | X > u) \sim GPD(\mu, \sigma, \xi)
+$$
+
 </section>
 
 <section>
-<h3>Conducting Prediction for Historical Data</h3>
+<h3>Getting a GPD Distribution Fit</h3>
+
+$$
+\text{GPD}(\mu, \sigma, \xi) \sim F(y) = 
+\begin{cases}
+1 - \left(1 + \xi \frac{x - \mu}{\sigma} \right)^{\frac{-1}{\xi}} \text{for } \xi \neq 0, \\
+1 - \exp(-\frac{x-\mu}{\sigma}) \text{ for } \xi = 0,
+\end{cases}
+$$
+
+Given $x \ge \mu$ if $\xi \ge 0$. 
+
+We will turn to MLE to estimate $\sigma$ and $\xi$. We will minimize the negative log-likelihood function $\ell(\sigma, \xi) = -n \ln\sigma - \left(\frac{1}{\xi}+1 \right) \sum_i^{260} \ln \left(1 + \xi\frac{x_i-\mu}{\sigma}\right),$ given that $\mu = Q_{0.99} = 44.7 \text{ mm }  = 1.75 \text{ inches}$
+</section>
+
+<section>
+<h3>How do you Model Distributions' <em>Tails</em>?</h3>
+
+<h2 style="text-align: center; color: forestgreen">GEV Distribution Style</h2>
+
+What are we actually modeling for GEVs?
+</section>
+
+<section>
+<h3>Getting a GEV Distribution Fit</h3>
+
+Again, we'll use MLE to estimate $\mu_{GEV}$, $\sigma_{GEV}$, and $\xi_{GEV}$, minimizing the negative log-likelihood function. 
+
+</section>
+
+<section>
+<h3>Conducting Prediction of Historical Data</h3>
 </section>
 
 <section>
 <h3>Generalizability to Future Prediction</h3>
 </section>
 
+<section>
+<h1>Thank you!</h1>
+<h3>Have a great break. Any questions?</h3>
+</section>
 
 ## Image credits
 

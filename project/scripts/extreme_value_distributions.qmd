@@ -1,0 +1,97 @@
+---
+title: "Fitting Extreme Value Distributions to Asheville, NC Precipitation"
+author: "Jack Bienvenue"
+date: "12 November 2025"
+format: html
+---
+
+# Objective
+
+In this file, we will use Generalized Extreme Value Distributions and Generalized Pareto Distributions to try to find an appropriate distributional fit of extreme precipitation in Asheville, NC. Eventually, we will use this to attempt to predict the extreme precipitation associated with Hurricane Helene.
+
+# Programming
+
+## Package & Data Setup
+```{python}
+# Package Import
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import os
+import numpy as np
+from scipy import stats
+
+# Data Import
+asheville_df = pd.read_csv("../data/ghcn_roi_daily_data/Asheville.csv")
+```
+
+## Create Plots to show Inadequacy of Typical Distributional Fits
+
+```{python}
+# Check an exponential fit:
+## Fit exponential
+precip = asheville_df["precipitation"].dropna()
+loc, scale = stats.expon.fit(precip, floc=0)
+lambda_hat = 1 / scale
+print(f"Estimated rate (λ): {lambda_hat:.4f}")
+print(f"Estimated mean (1/λ): {scale:.4f}")
+
+# Visualize fit vs. data
+x = np.linspace(0, precip.max(), 300)
+pdf_exp = stats.expon.pdf(x, loc=loc, scale=scale)
+
+plt.figure(figsize=(8,5))
+plt.hist(precip, bins=50, density=True, alpha=0.5, label="Empirical histogram")
+plt.plot(x, pdf_exp, "r-", lw=2, label=f"Exponential fit (λ={lambda_hat:.3f})")
+plt.xlabel("Precipitation (mm)")
+plt.ylabel("Density")
+plt.title("Exponential Fit vs. Observed Precipitation, Asheville, NC")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+
+# Compare expected vs. observed tail counts
+lower, upper = 44.7, 200
+
+## empirical count
+n_total = len(precip)
+observed_count = np.sum((precip >= lower) & (precip <= upper))
+
+## exponential probability mass in that region
+p_interval = stats.expon.cdf(upper, loc=loc, scale=scale) - stats.expon.cdf(lower, loc=loc, scale=scale)
+expected_count = n_total * p_interval
+
+print(f"Observed count in [{lower}, {upper}]: {observed_count}")
+print(f"Expected (Exponential) count: {expected_count:.1f}")
+print(f"Observed / Expected ratio: {observed_count / expected_count:.2f}")
+```
+
+## Get Extreme Value Distribution Fits
+
+```{python}
+## WE WILL ATTEMPT TO MODEL THE TOP 1% OF EXTREME VALUES
+# Find 99th percentile of daily precipitation
+precip = asheville_df["precipitation"].dropna()
+quantile_99 = precip.quantile(0.99)
+print("99th quantile of precipitation:", quantile_99, "mm")
+```
+
+### Generalized Pareto Distribution Fit
+
+GPD has three parameters: $\mu$--location, $\sigma$--scale, and $\xi$--shape. 
+
+We can estimate the parameters through maximum likelihood estimation. 
+
+```{python}
+# Get a new, filtered dataframe
+```
+
+### Generalized Extreme Value Distribution Fit
+
+```{python}
+
+```
