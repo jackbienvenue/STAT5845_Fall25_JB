@@ -88,13 +88,11 @@ preview-links: false
 </section>
 
 <section>
-<h3 style="text-align: center">Historical Precipitation Time Series</h3>
-
 <div style="
       border: 2px solid #ccc;
       border-radius: 8px;
       width: 100%;
-      height: 600px;
+      height: 675px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       margin-top: 10px;
       overflow: hidden;
@@ -116,29 +114,27 @@ preview-links: false
          data-background-size="1250px">
 
 <div class="image-box2 fragment">
-<h2>How do we manage prediction of extreme values?</h2>
-
+<h3>How do we manage prediction of extreme values?</h3>
 </div>
 
 </section>
 
-<section>
-<h2>Relevant Distributions</h2>
+<section data-auto-animate>
+<h3 style="text-align: center">How do we manage prediction of extreme values?</h3>
+<p style="text-align: center">Extreme value distributions can help.</p>
 
 <div class="container">
 
 <div class="col">
   <p>
-  This is the left column.  
-  You can put **text**, lists, or images here.
+  Generalized Extreme Value Distributions
   </p>
   <img src="images/example1.jpg" alt="Example 1">
 </div>
 
 <div class="col">
   <p>
-    This is the right column.  
-    You can put different content here.
+    Generalized Pareto Distributions
   </p>
   <img src="images/example2.jpg" alt="Example 2">
 </div>
@@ -153,11 +149,11 @@ preview-links: false
 </section>
 
 <section>
-<h3>How do you Model <em>Tails</em> of a Distribution?</h3>
+<h3>How do you Model a Distribution's <em>Tails</em>?</h3>
 </section>
 
 <section>
-<h3>Conducting Prediction for Past Data</h3>
+<h3>Conducting Prediction for Historical Data</h3>
 </section>
 
 <section>
