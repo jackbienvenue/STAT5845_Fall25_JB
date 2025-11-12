@@ -47,6 +47,15 @@ preview-links: false
   margin: 0 auto;            /* center in parent */
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* optional: soft drop shadow */
 }
+
+  .image-box2 {
+  background-color: rgba(38, 38, 38, 0.7); /* darker gray with 70% opacity */
+  padding: 20px;
+  border-radius: 12px;       /* rounded corners for a soft look */
+  display: inline-block;     /* shrink to fit content */
+  margin: 0 auto;            /* center in parent */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* optional: soft drop shadow */
+}
 </style>
 <!---------------------------------------------------------------->
 
@@ -60,15 +69,99 @@ preview-links: false
 
 <section data-auto-animate>
   <h2 style="text-align: center;">Data Overview</h2>
-  <p>a</p>
+  <ul>
+    <li>Global Historical Climatology Network (NOAA)</li>
+      <ul>
+        <li>Pros:</li>
+          <ul>
+            <li>Simple formatting</li>
+            <li>Data ranges from 1959-2025</li>
+          </ul>
+        <li>Cons:</li>
+          <ul>
+            <li>Modest spatial, temporal resolution</li>
+            <li>(Weather station points, day-aggregated data)</li>
+            <li>Only precip. totals, and max/min temperatures</li>
+          </ul>
+      </ul>
+  </ul>
 </section>
 
-<section data-auto-animate data-background="images/precip_animation.gif" data-background-repeat="repeat" data-background-size="1250px">
-  <h2 style="text-align: center;">a</h2>
+<section>
+<h3 style="text-align: center">Historical Precipitation Time Series</h3>
 
-  <div class="image-box">
-  <p>Hello world!</p>
-  </div>
+<div style="
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      width: 100%;
+      height: 600px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      margin-top: 10px;
+      overflow: hidden;
+      text-align: center
+">
+
+<iframe 
+  src="../images/asheville_precip_plot.html" 
+  style="width: 100%; height: 100%; border: none;"
+  title="Asheville Precipitation Plot">
+</iframe>
+
+</div>
+
+</section>
+
+<section data-auto-animate data-background="images/precip_animation.gif" 
+         data-background-repeat="repeat" 
+         data-background-size="1250px">
+
+<div class="image-box2 fragment">
+<h2>How do we manage prediction of extreme values?</h2>
+
+</div>
+
+</section>
+
+<section>
+<h2>Relevant Distributions</h2>
+
+<div class="container">
+
+<div class="col">
+  <p>
+  This is the left column.  
+  You can put **text**, lists, or images here.
+  </p>
+  <img src="images/example1.jpg" alt="Example 1">
+</div>
+
+<div class="col">
+  <p>
+    This is the right column.  
+    You can put different content here.
+  </p>
+  <img src="images/example2.jpg" alt="Example 2">
+</div>
+
+</div>
+
+</section>
+
+<section>
+<h3>Why Extreme Value Distributions?</h3>
+
+</section>
+
+<section>
+<h3>How do you Model <em>Tails</em> of a Distribution?</h3>
+</section>
+
+<section>
+<h3>Conducting Prediction for Past Data</h3>
+</section>
+
+<section>
+<h3>Generalizability to Future Prediction</h3>
 </section>
 
 
