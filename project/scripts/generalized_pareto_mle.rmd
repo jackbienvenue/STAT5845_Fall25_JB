@@ -1,0 +1,79 @@
+---
+author: Jack Bienvenue
+date: 12 November 2025
+output: pdf_document
+---
+
+### Generalized Pareto Distribution Fit
+
+GPD has three parameters: $\mu$--location, $\sigma$--scale, and $\xi$--shape. 
+
+We can estimate the parameters through maximum likelihood estimation. 
+
+A few people have built methods for MLE of $\sigma$ and $\xi$. The one used here comes from https://search.r-project.org/CRAN/refmans/evmix/html/fgpd.html.
+
+```{r}
+## Import packages
+library(evmix)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Import data
+asheville_df <- read.csv("../data/ghcn_roi_daily_data/Asheville.csv")
+## Remove NAs
+asheville_df <- asheville_df %>%
+  drop_na()
+
+# GPD Fitting mechanism
+set.seed(5845)
+fit <- fgpd(asheville_df$precipitation, u = 44.7) # 44.7 mm threshold 
+                                # represents 99th percentile of data
+
+# Inspect results
+fit$sigmau      # MLE of sigma
+fit$xi          # MLE of xi
+fit$se          # standard errors
+fit$cov         # variance-covariance matrix
+fit$nllh        # minimized negative log-likelihood
+fit$rate        # estimated tail fraction phi_u (proportion of exceedances)
+fit$optim$convergence
+```
+
+## Plot fitted distribution against true points:
+
+```{r}
+# Extract threshold and fitted parameters
+u <- 44.7
+sigma_hat <- fit$sigmau
+xi_hat <- fit$xi
+
+# Extract tail data (exceedances)
+exceedances <- asheville_df$precipitation[asheville_df$precipitation > u]
+y <- exceedances - u  # GPD models the excess over threshold
+
+# Compute fitted GPD density and empirical histogram
+# We’ll make a histogram of the exceedances and overlay the fitted pdf
+hist_df <- data.frame(y = y)
+
+# Create a sequence of excess values for smooth density curve
+y_seq <- seq(0, max(y), length.out = 200)
+gpd_pdf <- dgpd(y_seq, sigma = sigma_hat, xi = xi_hat)
+
+# Plot: histogram of empirical excesses + fitted GPD pdf
+# Create data frame for the fitted GPD curve
+gpd_df <- data.frame(y_seq = y_seq, gpd_pdf = gpd_pdf)
+
+# Plot: histogram of empirical excesses + fitted GPD pdf
+ggplot(hist_df, aes(x = y)) +
+  geom_histogram(aes(y = ..density..), bins = 30,
+                 fill = "skyblue", color = "white", alpha = 0.6) +
+  geom_line(data = gpd_df, aes(x = y_seq, y = gpd_pdf),
+            color = "red", size = 1.1) +
+  labs(
+    title = "Empirical Tail (Excesses) vs Fitted GPD",
+    x = "Excess over threshold (mm)",
+    y = "Density"
+  ) +
+  theme_minimal()
+```
