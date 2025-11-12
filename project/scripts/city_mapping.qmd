@@ -270,3 +270,80 @@ bluefield_time_series_precip_plot = station_time_series_plot("Bluefield")
 bluefield_time_series_precip_plot
 bluefield_time_series_precip_plot.write_html("../figures/precipitation_time_series/bluefield_precip_plot.html")
 ```
+
+# Now, let's make some empirical cumulative distribution plots
+
+```{python}
+# Build a nice, helpful function for histogram plotting:
+import os
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def precipitation_histogram(station_name, save=True):
+    '''
+    ARGUMENTS:
+    station_name -- string -- name (town only, e.g. "Asheville") of a weather station in ROI
+    save -- bool -- whether to save the figure (default: True)
+    '''
+
+    # --- Retrieve weather station data ---
+    base_dir = os.path.join("..", "data", "ghcn_roi_daily_data")
+    file_path = os.path.join(base_dir, f"{station_name}.csv")
+
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"No CSV file found for station '{station_name}' at {file_path}")
+
+    df = pd.read_csv(file_path)
+
+    # ensure data consistency
+    if "precipitation" not in df.columns:
+        raise ValueError(f"Column 'precipitation' not found in data for {station_name}.")
+
+    precip = df["precipitation"].dropna()
+    precip = precip[precip >= 0]
+
+    # plot build
+    plt.figure(figsize=(8, 6))
+    sns.set(style="whitegrid")
+
+    sns.histplot(
+        precip,
+        bins=40,
+        stat="density",
+        kde=True,
+        color="royalblue",
+        edgecolor="white",
+        alpha=0.8
+    )
+
+    plt.title("Frequency of Daily Precipitation Totals", fontsize=14, fontweight="bold")
+    plt.xlabel("Daily Precipitation (mm)")
+    plt.ylabel("Density")
+
+    # transparent background
+    plt.gcf().patch.set_alpha(0.0)
+    plt.gca().patch.set_alpha(0.0)
+    sns.despine()
+    plt.tight_layout()
+
+    # Save fig
+    if save:
+        image_dir = os.path.join("..", "images")
+        os.makedirs(image_dir, exist_ok=True)  # ensure directory exists
+
+        save_path = os.path.join(image_dir, f"{station_name}_precip_pdf.png")
+
+        plt.savefig(save_path, dpi=300, transparent=True, bbox_inches="tight")
+        print(f" Figure saved to: {save_path}")
+        plt.close()
+    else:
+        plt.show()
+
+```
+
+```{python}
+# Try precipitation histogram for Asheville
+precipitation_histogram("Asheville")
+```

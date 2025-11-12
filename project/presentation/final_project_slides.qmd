@@ -51,10 +51,10 @@ preview-links: false
 <!---------------------------------------------------------------->
 
 <section data-auto-animate data-background="images/helene_over_us.gif" data-background-repeat="repeat" data-background-size="1000px">
-  <h2 style="text-align: center;">When Only Extremes Matter</h2>
+  <h2 style="text-align: center;">Somtimes, Only Extremes Matter</h2>
 
   <div class="image-box">
-  <img src="images/precip.png" style="display: block; margin: 0 auto; width: 75%;">
+  <img src="images/precip.png" style="display: block; margin: 0 auto; width: 70%;">
   </div>
 </section>
 
