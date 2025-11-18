@@ -1,0 +1,350 @@
+---
+title: STAT5845 HW8
+author: Jack Bienvenue
+date: 17 November 2025
+output:
+  bookdown::pdf_document2:
+    latex_engine: pdflatex
+    keep_tex: true 
+header-includes:
+  - \usepackage{titling}
+  - \setlength{\droptitle}{1em} 
+fontsize: 12pt
+---
+
+```{r echo=FALSE}
+# Initialization
+
+## Package Import
+invisible(lapply(c("dplyr", "tidyr", "ggplot2",
+                   "gstat", "tidyverse", "patchwork",
+                   "broom", "lubridate", "fields",
+                   "sp", "sf", "rnaturalearth",
+                   "rnaturalearthdata"), 
+  function(pkg) suppressPackageStartupMessages(library(pkg, 
+                                                character.only = TRUE))))
+
+## Data Import
+data(wind)
+
+## Data cleaning/prep
+# Convert to tibble for easier handling
+wind_tbl <- as_tibble(wind) %>%
+  mutate(date = seq(as.Date("1961-01-01"), as.Date("1978-12-31"), by = "day")) %>%
+  relocate(date)
+
+# Long format
+wind_long <- wind_tbl %>%
+  pivot_longer(cols = RPT:MAL, names_to = "station", values_to = "wind")
+
+# Collapse to monthly averages
+wind_month <- wind_long %>%
+  mutate(ym = floor_date(date, "month")) %>%
+  group_by(station, ym) %>%
+  summarise(wind = mean(wind, na.rm = TRUE), .groups = "drop") %>%
+  mutate(month = month(ym, label = TRUE, abbr = TRUE))
+```
+
+# Gneiting-Matérn Space-time Covariance Model of Residuals via MLE
+
+```{r}
+# ======================================================================
+# DETERMINISTIC — Build seasonal regressors & fit three models
+# ======================================================================
+
+wind_model <- wind_month %>%
+  mutate(
+    year_num = year(ym) + (month(ym) - 0.5)/12,
+    t        = year_num - min(year_num),
+    s1 = sin(2*pi*t),
+    c1 = cos(2*pi*t)
+  )
+
+m_pooled     <- lm(wind ~ s1 + c1, data = wind_model)
+m_intercepts <- lm(wind ~ station + s1 + c1, data = wind_model)
+m_full       <- lm(wind ~ station * (s1 + c1), data = wind_model)
+
+# --- Extract residuals from best deterministic model (Model C) ----------------
+resid_C <- augment(m_full, data = wind_model) %>%
+  transmute(station, ym, resid = .resid)
+
+# ============================================================
+# Fit Matérn space–time covariance to residuals
+# ============================================================
+wind.loc$y <- as.numeric(char2dms(as.character(wind.loc$L2atitude)))
+wind.loc$x <- as.numeric(char2dms(as.character(wind.loc$Longitude)))
+coords <- wind.loc %>%
+  mutate(
+    y = as.numeric(char2dms(as.character(Latitude))),
+    x = as.numeric(char2dms(as.character(Longitude)))
+  ) %>%
+  select(station = Code, x, y)
+
+st_resid <- resid_C %>%
+  left_join(coords, by = "station")
+
+# ============================================================
+# TRAIN–TEST SPLIT: remove last 6 months
+# ============================================================
+
+last6_months <- sort(unique(st_resid$ym), decreasing = TRUE)[1:6]
+st_train <- st_resid %>% filter(!ym %in% last6_months)
+st_test  <- st_resid %>% filter(ym %in% last6_months)
+
+# ============================================================
+# Fit Matérn space–time covariance to Irish monthly residuals
+# ============================================================
+
+# Use training residuals as df
+df <- st_train %>% arrange(ym, station)
+
+# Response
+y <- df$resid
+N <- length(y)
+
+# Spatial distance matrix (lon/lat -> great-circle distance)
+locs <- as.matrix(df[, c("x", "y")])
+D_spatial <- rdist.earth(locs, miles = TRUE)
+
+# Time in months since first month
+time_vec <- as.numeric(difftime(df$ym, min(df$ym), units = "days")) / 30.4375
+U_time <- abs(outer(time_vec, time_vec, "-"))
+
+# ------------------------------------------------------------
+# space–time Matérn covariance function
+# ------------------------------------------------------------
+matern_corr <- function(D, nu, range_s) {
+  if (is.infinite(nu)) return(exp(-(D / range_s)^2))
+  
+  r <- sqrt(2 * nu) * D / range_s
+  C <- (2^(1 - nu) / gamma(nu)) * (r^nu) * besselK(r, nu)
+  C[r == 0] <- 1
+  C
+}
+
+build_K_spacetime <- function(sigma2, beta_s, nu, nug, beta_t, gamma_st,
+                              D_spatial, U_time) {
+  alpha <- 1
+  tau   <- 1   # d/2 for d = 2
+  
+  S         <- 1 + (U_time^(2 * alpha)) / beta_t      # ψ(|u|^2)
+  range_mat <- beta_s * S^(gamma_st / 2)              # ℓ_ij = β_s ψ^{γ/2}
+  R_mat     <- matern_corr(D_spatial, nu, range_mat)  # spatial Matérn
+  K         <- sigma2 * S^(-tau) * R_mat              # σ² ψ^{-d/2} Matérn
+  
+  diag(K) <- diag(K) + nug
+  K
+}
+
+# ------------------------------------------------------------
+# Negative log-likelihood and optimization
+# ------------------------------------------------------------
+nll <- function(par) {
+  nug      <- 1e-6
+  sigma2   <- par[1]^2
+  beta_s   <- exp(par[2])
+  beta_t   <- exp(par[3])
+  gamma_st <- 1 / (1 + exp(-par[4]))  # logistic transform in (0,1)
+  nu_val   <- exp(par[5])
+  mu_val   <- 0                       # zero-mean residuals
+  
+  K <- build_K_spacetime(sigma2, beta_s, nu_val, nug, beta_t, gamma_st,
+                         D_spatial, U_time)
+  
+  L <- tryCatch(chol(K), error = function(e) NULL)
+  if (is.null(L)) return(1e10)
+  
+  z <- backsolve(L, y - mu_val, transpose = TRUE)
+  logdetK <- 2 * sum(log(diag(L)))
+  quad    <- sum(z^2)
+  
+  0.5 * N * log(2 * pi) + 0.5 * logdetK + 0.5 * quad
+}
+
+# Rough initial values 
+init <- c(
+  sqrt(var(y, na.rm = TRUE)),                            # sigma2 scale
+  log(median(D_spatial[D_spatial > 0], na.rm = TRUE)),   # beta_s
+  log(5),                                                # beta_t (months)
+  0,                                                     # gamma_st on logit scale
+  log(0.5)
+)
+
+fit <- optim(init, nll, control = list(trace = 3, maxit = 500))
+
+est_par     <- fit$par
+tausq_hat   <- 1e-6
+sigma2_hat  <- est_par[1]^2
+beta_s_hat  <- exp(est_par[2])
+beta_t_hat  <- exp(est_par[3])
+gamma_hat   <- 1 / (1 + exp(-est_par[4]))
+nu_hat      <- exp(est_par[5])
+mu_hat      <- 0
+
+results <- data.frame(
+  Parameter = c("tau^2 (nugget)", "sigma^2 (variance)", "beta_s (spatial range, miles)",
+                "beta_t (temporal range, months)", "gamma (space-time)", 
+                "nu (smoothness)", "mu (mean)"),
+  Estimated = c(tausq_hat, sigma2_hat, beta_s_hat, beta_t_hat,
+                gamma_hat, nu_hat, mu_hat)
+)
+
+cat("Estimated Parameters (Irish monthly winds):\n")
+print(results, digits = 4, row.names = FALSE)
+
+# --------------------------------------------------
+# Plot estimated space–time covariance
+# --------------------------------------------------
+
+# scalar C(h,u) consistent with build_K_spacetime
+matern_spacetime_cov <- function(h, u, sigma2, beta_s, beta_t, gamma_st, nu, nug = 0) {
+  alpha <- 1
+  tau   <- 1
+  
+  S_u      <- 1 + (abs(u)^(2 * alpha)) / beta_t   # ψ(|u|^2)
+  range_u  <- beta_s * S_u^(gamma_st / 2)         # ℓ(u) = β_s ψ^{γ/2}
+  R        <- matern_corr(h, nu, range_u)         # Matérn(h; ℓ(u))
+  cov_val  <- sigma2 * S_u^(-tau) * R             # σ² ψ^{-d/2} Matérn
+  
+  if (nug > 0 && u == 0) cov_val[h == 0] <- cov_val[h == 0] + nug
+  cov_val
+}
+
+max_d <- max(D_spatial, na.rm = TRUE)
+spatial_distance <- seq(0, max_d, length.out = 200)
+
+time_points <- c(0, 1, 3, 6, 12)
+
+colors <- c("#000000", "#004369", "#BE2D2D", "#0e6900", "#FF8C00")
+
+plot(NA,
+     xlim = c(0, max(spatial_distance)),
+     ylim = c(0, sigma2_hat + tausq_hat),
+     xlab = "Spatial distance h (miles)",
+     ylab = "C(h, u)",
+     main = "Estimated Matérn space–time covariance (Irish monthly winds)",
+     las = 1)
+
+for (j in seq_along(time_points)) {
+  u <- time_points[j]
+  cov_values <- matern_spacetime_cov(spatial_distance, u,
+                                     sigma2_hat, beta_s_hat, beta_t_hat,
+                                     gamma_hat, nu_hat, nug = tausq_hat)
+  lines(spatial_distance, cov_values, col = colors[j], lwd = 2.5)
+}
+
+legend("topright",
+       legend = paste("u =", time_points, "months"),
+       col = colors[seq_along(time_points)],
+       lwd = 2.5,
+       bty = "n",
+       title = "Time lag")
+```
+
+# Space-time Kriging
+
+```{r}
+# ============================================================
+# SIMPLE KRIGING (mean = 0) IN SPACE–TIME
+# ============================================================
+
+df_test <- st_test %>% arrange(ym, station)
+
+test_y <- df_test$resid
+n_train <- N
+n_test  <- length(test_y)
+
+locs_train <- as.matrix(df[, c("x", "y")])
+locs_test  <- as.matrix(df_test[, c("x", "y")])
+
+time_vec_train <- time_vec
+time_vec_test  <- as.numeric(difftime(df_test$ym, min(df$ym),
+                                      units = "days")) / 30.4375
+
+D_train       <- D_spatial
+D_test_train  <- rdist.earth(locs_test, locs_train, miles = TRUE)
+
+U_train      <- U_time
+U_test_train <- abs(outer(time_vec_test, time_vec_train, "-"))
+
+K <- build_K_spacetime(sigma2_hat, beta_s_hat, nu_hat,
+                       tausq_hat, beta_t_hat, gamma_hat,
+                       D_train, U_train)
+
+K_inv <- solve(K)
+
+k <- build_K_spacetime(sigma2_hat, beta_s_hat, nu_hat,
+                       nug = 0,
+                       beta_t_hat, gamma_hat,
+                       D_test_train, U_test_train)
+
+known_mean <- 0
+train_Z    <- y
+test_Z     <- test_y
+
+pred_test <- k %*% (K_inv %*% (train_Z - known_mean)) + known_mean
+
+c0 <- rep(sigma2_hat + tausq_hat, n_test)
+
+tmp      <- k %*% K_inv
+var_test <- c0 - rowSums(tmp * k)
+
+mse_test <- mean((as.vector(pred_test) - test_Z)^2, na.rm = TRUE)
+cat("\nTest MSE on held-out months (residual process):", mse_test, "\n")
+
+# ============================================================
+# PREDICTIONS for next FIVE months with kriging variances
+# ============================================================
+
+n_future <- 5
+future_months <- max(df$ym) %m+% months(1:n_future)
+
+pred_list  <- vector("list", n_future)
+var_list   <- vector("list", n_future)
+
+# a loop to compute 5 months forward (in the original code from Dr. Salvaña,
+# it only generate predictions for a single chosen month)
+for (i in seq_len(n_future)) {
+  target_month <- future_months[i]
+  # time for each grid cell
+  target_time <- as.numeric(difftime(target_month, min(df$ym),
+                                     units="days")) / 30.4375
+  time_vec_grid <- rep(target_time, nrow(grid_df))
+
+  # space-time distances
+  D_grid_train <- rdist.earth(grid_locs, locs_train, miles=TRUE)
+  U_grid_train <- abs(outer(time_vec_grid, time_vec_train, "-"))
+
+  # covariance between grid and training sites
+  k_grid <- build_K_spacetime(
+    sigma2_hat, beta_s_hat, nu_hat, nug=0,
+    beta_t_hat, gamma_hat,
+    D_grid_train, U_grid_train
+  )
+
+  # SK prediction: mean = 0
+  pred_grid <- as.vector(k_grid %*% (K_inv %*% train_Z))
+
+  # kriging variance at each grid point
+  tmp <- k_grid %*% K_inv
+  var_grid <- (sigma2_hat + tausq_hat) - rowSums(tmp * k_grid)
+
+  pred_list[[i]] <- pred_grid
+  var_list[[i]]  <- var_grid
+}
+
+names(pred_list) <- format(future_months, "%Y-%m")
+names(var_list)  <- format(future_months, "%Y-%m")
+```
+
+
+# Plot Reproduction
+
+```{r}
+
+```
+
+# Open-ended questions
+
+**What can you say about the predicted residual fields and their uncertainties? Do the spatial patterns and the increasing uncertainty over future months make sense? Why?**
+
