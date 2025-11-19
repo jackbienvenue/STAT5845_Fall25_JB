@@ -20,7 +20,8 @@ invisible(lapply(c("dplyr", "tidyr", "ggplot2",
                    "gstat", "tidyverse", "patchwork",
                    "broom", "lubridate", "fields",
                    "sp", "sf", "rnaturalearth",
-                   "rnaturalearthdata"), 
+                   "rnaturalearthdata", "scales",
+                   "grid"), 
   function(pkg) suppressPackageStartupMessages(library(pkg, 
                                                 character.only = TRUE))))
 
@@ -170,29 +171,41 @@ init <- c(
   log(0.5)
 )
 
-fit <- optim(init, nll, control = list(trace = 3, maxit = 500))
+# To only run the optimization once, I suspended the call:
 
-est_par     <- fit$par
-tausq_hat   <- 1e-6
-sigma2_hat  <- est_par[1]^2
-beta_s_hat  <- exp(est_par[2])
-beta_t_hat  <- exp(est_par[3])
-gamma_hat   <- 1 / (1 + exp(-est_par[4]))
-nu_hat      <- exp(est_par[5])
-mu_hat      <- 0
+# fit <- optim(init, nll, control = list(trace = 3, maxit = 500))
+# 
+# est_par     <- fit$par
+# tausq_hat   <- 1e-6
+# sigma2_hat  <- est_par[1]^2
+# beta_s_hat  <- exp(est_par[2])
+# beta_t_hat  <- exp(est_par[3])
+# gamma_hat   <- 1 / (1 + exp(-est_par[4]))
+# nu_hat      <- exp(est_par[5])
+# mu_hat      <- 0
+# 
+# results <- data.frame(
+#   Parameter = c("tau^2 (nugget)", "sigma^2 (variance)", "beta_s (spatial range, miles)",
+#                 "beta_t (temporal range, months)", "gamma (space-time)", 
+#                 "nu (smoothness)", "mu (mean)"),
+#   Estimated = c(tausq_hat, sigma2_hat, beta_s_hat, beta_t_hat,
+#                 gamma_hat, nu_hat, mu_hat)
+# )
 
-results <- data.frame(
-  Parameter = c("tau^2 (nugget)", "sigma^2 (variance)", "beta_s (spatial range, miles)",
-                "beta_t (temporal range, months)", "gamma (space-time)", 
-                "nu (smoothness)", "mu (mean)"),
-  Estimated = c(tausq_hat, sigma2_hat, beta_s_hat, beta_t_hat,
-                gamma_hat, nu_hat, mu_hat)
-)
+# Instead of re-running that code, just read saved csv:
+#------<-------COMMENT OUT THIS SECTION if running optim -------->------#
+results <- read.csv("optimization_results.csv")
+
+tausq_hat   <- results$Estimated[1]
+sigma2_hat  <- results$Estimated[2]
+beta_s_hat  <- results$Estimated[3]
+beta_t_hat  <- results$Estimated[4]
+gamma_hat   <- results$Estimated[5]
+nu_hat      <- results$Estimated[6]
+mu_hat      <- results$Estimated[7]
 
 cat("Estimated Parameters (Irish monthly winds):\n")
 print(results, digits = 4, row.names = FALSE)
-
-write.csv(results, file = "optimization_results.csv")
 
 # --------------------------------------------------
 # Plot estimated space–time covariance
@@ -219,37 +232,37 @@ time_points <- c(0, 1, 3, 6, 12)
 
 colors <- c("#000000", "#004369", "#BE2D2D", "#0e6900", "#FF8C00")
 
-par(mfrow = c(1,1))
-par(ask = FALSE)
+plot_df <- expand.grid(
+  h = seq(0, max(D_spatial, na.rm = TRUE), length.out = 200),
+  u = time_points
+)
 
-plot(NA,
-     xlim = c(0, max(spatial_distance)),
-     ylim = c(0, sigma2_hat + tausq_hat),
-     xlab = "Spatial distance h (miles)",
-     ylab = "C(h, u)",
-     main = "Estimated Matérn space–time covariance (Irish monthly winds)",
-     las = 1)
+plot_df$cov <- mapply(
+  FUN = function(h, u) {
+    matern_spacetime_cov(
+      h, u,
+      sigma2_hat, beta_s_hat, beta_t_hat,
+      gamma_hat, nu_hat, nug = tausq_hat
+    )
+  },
+  h = plot_df$h,
+  u = plot_df$u
+)
 
+# Convert to data frame
+plot_df <- as.data.frame(plot_df)
 
-lines(spatial_distance, matern_spacetime_cov(spatial_distance, 0,
-                                             sigma2_hat, beta_s_hat,
-                                             beta_t_hat, gamma_hat,
-                                             nu_hat, nug = tausq_hat))
-
-for (j in seq_along(time_points)) {
-  u <- time_points[j]
-  cov_values <- matern_spacetime_cov(spatial_distance, u,
-                                     sigma2_hat, beta_s_hat, beta_t_hat,
-                                     gamma_hat, nu_hat, nug = tausq_hat)
-  lines(spatial_distance, cov_values, col = colors[j], lwd = 2.5)
-}
-
-legend("topright",
-       legend = paste("u =", time_points, "months"),
-       col = colors[seq_along(time_points)],
-       lwd = 2.5,
-       bty = "n",
-       title = "Time lag")
+# Use ggplot
+ggplot(plot_df, aes(x = h, y = cov, color = factor(u))) +
+  geom_line(linewidth = 1.1) +
+  scale_color_manual(values = colors) +
+  labs(
+    x = "Spatial distance h (miles)",
+    y = "Covariance C(h, u)",
+    color = "Time lag u (months)",
+    title = "Estimated Gneiting-Matérn Space–Time Covariance"
+  ) +
+  theme_minimal(base_size = 14)
 ```
 
 
@@ -308,43 +321,75 @@ cat("\nTest MSE on held-out months (residual process):", mse_test, "\n")
 # PREDICTIONS for next FIVE months with kriging variances
 # ============================================================
 
+# Create a regular prediction grid over the full ROI
+lon_seq <- seq(-11, -5, length.out = 100)  # 100 points in longitude
+lat_seq <- seq(51, 56, length.out = 100)   # 100 points in latitude
+full_grid <- expand.grid(x = lon_seq, y = lat_seq)  # 10000 points
+
+# Matrix of grid locations (needed for rdist.earth)
+grid_locs <- as.matrix(full_grid[, c("x", "y")])
+
+# Number of future months to predict
 n_future <- 5
 future_months <- max(df$ym) %m+% months(1:n_future)
 
-pred_list  <- vector("list", n_future)
-var_list   <- vector("list", n_future)
+# Lists to store predictions and variances
+pred_list <- vector("list", n_future)
+var_list  <- vector("list", n_future)
 
-# a loop to compute 5 months forward (in the original code from Dr. Salvaña,
-# it only generate predictions for a single chosen month)
+decay_rate <- 0.95   
+var_growth <- 1.1 
+
+# Loop over each future month
 for (i in seq_len(n_future)) {
   target_month <- future_months[i]
-  # time for each grid cell
-  target_time <- as.numeric(difftime(target_month, min(df$ym),
-                                     units="days")) / 30.4375
-  time_vec_grid <- rep(target_time, nrow(grid_df))
-
-  # space-time distances
-  D_grid_train <- rdist.earth(grid_locs, locs_train, miles=TRUE)
+  
+  # Compute time vector for grid points
+  target_time <- as.numeric(difftime(target_month, min(df$ym), units = "days")) / 30.4375
+  time_vec_grid <- rep(target_time, nrow(full_grid))
+  
+  # Compute space-time distances between grid and training sites
+  D_grid_train <- rdist.earth(grid_locs, locs_train, miles = TRUE)
   U_grid_train <- abs(outer(time_vec_grid, time_vec_train, "-"))
-
-  # covariance between grid and training sites
+  
+  # Covariance between grid and training sites
   k_grid <- build_K_spacetime(
-    sigma2_hat, beta_s_hat, nu_hat, nug=0,
+    sigma2_hat, beta_s_hat, nu_hat, nug = 0,
     beta_t_hat, gamma_hat,
     D_grid_train, U_grid_train
   )
-
-  # SK prediction: mean = 0
+  
+  # Simple Kriging predictions (mean = 0)
   pred_grid <- as.vector(k_grid %*% (K_inv %*% train_Z))
-
-  # kriging variance at each grid point
+  
+  # Kriging variance
+  # 1) covariance at prediction points themselves
+  c0 <- diag(build_K_spacetime(
+    sigma2_hat, beta_s_hat, nu_hat,
+    nug = tausq_hat,          # include nugget
+    beta_t_hat, gamma_hat,
+    D_spatial = matrix(0, nrow=nrow(full_grid), ncol=nrow(full_grid)),  # zero distances
+    U_time = matrix(0, nrow=nrow(full_grid), ncol=nrow(full_grid))      # lag 0
+  ))
+  
+  # 2) cross-covariance with training points
+  k_grid <- build_K_spacetime(
+    sigma2_hat, beta_s_hat, nu_hat,
+    nug = 0,                  # nugget only in c0
+    beta_t_hat, gamma_hat,
+    D_grid_train, U_grid_train
+  )
+  
+  # 3) kriging variance formula
   tmp <- k_grid %*% K_inv
-  var_grid <- (sigma2_hat + tausq_hat) - rowSums(tmp * k_grid)
-
-  pred_list[[i]] <- pred_grid
-  var_list[[i]]  <- var_grid
+  var_grid <- c0 - rowSums(tmp * k_grid)
+  
+  # --- Apply mean decay and variance growth ---
+  pred_list[[i]] <- pred_grid * decay_rate^i
+  var_list[[i]]  <- var_grid * var_growth^i
 }
 
+# Name the list elements by month
 names(pred_list) <- format(future_months, "%Y-%m")
 names(var_list)  <- format(future_months, "%Y-%m")
 ```
@@ -353,7 +398,114 @@ names(var_list)  <- format(future_months, "%Y-%m")
 # Plot Reproduction
 
 ```{r}
+ireland <- ne_countries(scale = "medium", country = "Ireland", returnclass = "sf") %>%
+           st_transform(4326)
 
+# Prepare long-format dataframe for mean predictions
+mean_long <- lapply(seq_along(pred_list), function(i) {
+  data.frame(
+    x = full_grid$x,
+    y = full_grid$y,
+    month = month_names[i],
+    mean = pred_list[[i]]
+  )
+}) %>% bind_rows()
+
+# Rename column to match plotting function (if it expects 'mean')
+mean_long <- mean_long %>% rename(value = mean)
+
+# Prepare long-format dataframe for variance predictions
+var_long <- lapply(seq_along(var_list), function(i) {
+  data.frame(
+    x = full_grid$x,
+    y = full_grid$y,
+    month = month_names[i],
+    var = var_list[[i]]
+  )
+}) %>% bind_rows()
+
+# ---------------------------
+# Define plotting region & aesthetics
+# ---------------------------
+
+lon_limits <- c(-11, -5)
+lat_limits <- c(51, 56)
+
+custom_colors <- scale_fill_gradientn(
+  colors = c("navy", "blue", "cyan", "yellow", "orange", "red", "maroon"),
+  labels = scales::number_format(accuracy = 0.1)
+)
+
+lon_breaks <- seq(-11, -5, by = 1)
+lat_breaks <- seq(51, 56, by = 1)
+
+# ---------------------------
+# Functions to make plots
+# ---------------------------
+lon_breaks_sparse <- seq(-11, -5, by = 2)  # show every 2 degrees
+lat_breaks_sparse <- seq(51, 56, by = 2)
+
+make_mean_plot <- function(m, title_i) {
+  dfm <- filter(mean_long, month == m)
+  
+  ggplot() +
+    geom_sf(data = ireland, fill="grey90", color="black") +
+    geom_tile(data = dfm, aes(x=x, y=y, fill=value)) +
+    custom_colors +
+    coord_sf(xlim = lon_limits, ylim = lat_limits, expand = FALSE) +
+    scale_x_continuous(breaks = lon_breaks) +
+    scale_y_continuous(breaks = lat_breaks) +
+    labs(title = title_i, x="Longitude", y="Latitude") +
+    theme_minimal(base_size = 10) +
+    theme(
+      plot.title = element_text(size = 8, face = "bold"),
+      legend.position = "right",
+      legend.key.width = unit(0.3, "cm"),
+      legend.key.height = unit(2, "cm"),
+      legend.title = element_text(size=8),
+      legend.text = element_text(size=6)
+    )
+}
+
+make_var_plot <- function(m, title_i) {
+  dfv <- filter(var_long, month == m)
+  ggplot(dfv, aes(x=x, y=y, fill=var)) +
+    geom_tile() +
+    custom_colors +
+    coord_cartesian(xlim = lon_limits, ylim = lat_limits, expand = FALSE) +
+    scale_x_continuous(breaks = lon_breaks) +
+    scale_y_continuous(breaks = lat_breaks) +
+    labs(title = title_i, x="Longitude", y="Latitude") +
+    theme_minimal(base_size = 10) +
+    theme(
+      plot.title = element_text(size = 8, face = "bold"),
+      legend.position = "right",
+      legend.key.width = unit(0.3, "cm"),
+      legend.key.height = unit(2, "cm"),
+      legend.title = element_text(size=8),
+      legend.text = element_text(size=6)
+    )
+}
+
+# ---------------------------
+# Titles and plotting
+# ---------------------------
+
+mean_titles <- c("Mean, t=1978-07", "Mean, t=1978-08", "Mean, t=1978-09",
+                 "Mean, t=1978-10", "Mean, t=1978-11")
+var_titles  <- c("Var, t=1978-07", "Var, t=1978-08", "Var, t=1978-09",
+                 "Var, t=1978-10", "Var, t=1978-11")
+
+# Build plots
+list_means <- Map(make_mean_plot, month_names, mean_titles)
+list_vars  <- Map(make_var_plot, month_names, var_titles)
+
+# Combine into 2x5 layout
+final_plot <- (wrap_plots(list_means, ncol=5, guides="collect") /
+               wrap_plots(list_vars,  ncol=5, guides="collect")) &
+               theme(legend.position="right")
+
+final_plot
 ```
 
 # Open-ended questions
