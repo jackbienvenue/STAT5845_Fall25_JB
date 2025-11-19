@@ -71,7 +71,7 @@ resid_C <- augment(m_full, data = wind_model) %>%
 # ============================================================
 # Fit Matérn space–time covariance to residuals
 # ============================================================
-wind.loc$y <- as.numeric(char2dms(as.character(wind.loc$L2atitude)))
+wind.loc$y <- as.numeric(char2dms(as.character(wind.loc$Latitude)))
 wind.loc$x <- as.numeric(char2dms(as.character(wind.loc$Longitude)))
 coords <- wind.loc %>%
   mutate(
@@ -192,6 +192,8 @@ results <- data.frame(
 cat("Estimated Parameters (Irish monthly winds):\n")
 print(results, digits = 4, row.names = FALSE)
 
+write.csv(results, file = "optimization_results.csv")
+
 # --------------------------------------------------
 # Plot estimated space–time covariance
 # --------------------------------------------------
@@ -217,6 +219,9 @@ time_points <- c(0, 1, 3, 6, 12)
 
 colors <- c("#000000", "#004369", "#BE2D2D", "#0e6900", "#FF8C00")
 
+par(mfrow = c(1,1))
+par(ask = FALSE)
+
 plot(NA,
      xlim = c(0, max(spatial_distance)),
      ylim = c(0, sigma2_hat + tausq_hat),
@@ -224,6 +229,12 @@ plot(NA,
      ylab = "C(h, u)",
      main = "Estimated Matérn space–time covariance (Irish monthly winds)",
      las = 1)
+
+
+lines(spatial_distance, matern_spacetime_cov(spatial_distance, 0,
+                                             sigma2_hat, beta_s_hat,
+                                             beta_t_hat, gamma_hat,
+                                             nu_hat, nug = tausq_hat))
 
 for (j in seq_along(time_points)) {
   u <- time_points[j]
@@ -240,6 +251,7 @@ legend("topright",
        bty = "n",
        title = "Time lag")
 ```
+
 
 # Space-time Kriging
 
