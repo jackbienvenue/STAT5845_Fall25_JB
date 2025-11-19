@@ -328,14 +328,14 @@ full_grid <- expand.grid(x = lon_seq, y = lat_seq)  # 10000 points
 # Matrix of grid locations (needed for rdist.earth)
 grid_locs <- as.matrix(full_grid[, c("x", "y")])
 
-#----------------
 # ============================================================
 # Krige over a spatial grid (whole Ireland) for a future month
 # ============================================================
 
 # Choose the first test month as the prediction month
 target_month <- min(df_test$ym)
-target_time  <- as.numeric(difftime(target_month, min(df$ym), units = "days")) / 30.4375
+target_time  <- as.numeric(difftime(target_month, min(df$ym), 
+                                    units = "days")) / 30.4375
 
 # Define spatial grid (buffer ±1 degree, grid resolution = 80)
 x_range <- range(coords$x)
@@ -363,13 +363,12 @@ pred_grid <- as.vector(k_grid %*% (K_inv %*% train_Z))
 
 # Kriging variance (optional)
 var_grid <- sigma2_hat - rowSums(k_grid %*% K_inv * k_grid)
-
 ```
 
 
 # Plot Reproduction
 
-```{r}
+```{r echo=FALSE}
 # Ireland map for overlay
 ireland <- rnaturalearth::ne_countries(
   scale = "medium",
@@ -402,10 +401,7 @@ cols_global <- tim.colors(n_col)
 
 ```
 
-```{r start}
-
-library(lubridate)
-
+```{r echo=FALSE}
 n_future <- 5
 future_months <- max(df$ym) %m+% months(1:n_future)
 
@@ -451,7 +447,7 @@ names(var_list)  <- format(future_months, "%Y-%m")
 
 ```
 
-```{r}
+```{r echo=FALSE}
 ireland <- rnaturalearth::ne_countries(
   scale = "medium",
   country = "Ireland",
@@ -468,8 +464,8 @@ z_var  <- range(unlist(var_list), na.rm = TRUE)
 
 ```
 
-```{r}
-par(mfrow = c(2, 5), mar = c(4, 4, 3, 2))
+```{r echo=FALSE}
+par(mfrow = c(2, 5), mar = c(4, 4, 3, 2), mgp = c(1.25, 0.5, 0))
 
 # --- Top row: mean predictions ---
 for (i in seq_len(n_future)) {
@@ -504,7 +500,7 @@ for (i in seq_len(n_future)) {
     xlab = "Longitude", ylab = "Latitude",
     main = paste0("Var, t = ", names(var_list)[i]),
     zlim = z_var,
-    col  = cols_var
+    col  = cols_var,
   )
   
   par(new = TRUE)
@@ -522,3 +518,9 @@ for (i in seq_len(n_future)) {
 
 **What can you say about the predicted residual fields and their uncertainties? Do the spatial patterns and the increasing uncertainty over future months make sense? Why?**
 
+
+For the first row of plots, the mean residual predictions are more heterogeneous to start, which reflects the initial influence of the observed wind data at each station. Areas near weather stations with high variability (like the north and southwest) show larger residuals. As time progresses though, the predictions for residuals converge toward zero. This happens because the kriging prediction is a Best Linear Unbiased Prediction. Without recent observations, the best estimate for the residual is just its expected value, because $E[\epsilon] = 0$. Temporal decay from the temporal covariance function reduces the influence of past data over time, so the spatial variability disappears over time and the mean residual map becomes less variable.
+
+On the other hand, the predicted variance of the residuals increases over time. This is expected because the kriging variance quantifies the uncertainty of the prediction. Moving further from the observed data in time means the covariance between the prediction location and past observations decreases. Because of this, we are less certain about the residual at future times, which leads to larger predictive variances. The increasing uncertainty over time is natural for kriging with temporally decaying covariances.
+
+Without recent data, the best estimate of the residual is its expectation, but the uncertainty grows because we know less about deviations from the mean (because we move further in time from any observed data).
