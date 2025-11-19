@@ -128,10 +128,10 @@ build_K_spacetime <- function(sigma2, beta_s, nu, nug, beta_t, gamma_st,
   alpha <- 1
   tau   <- 1   # d/2 for d = 2
   
-  S         <- 1 + (U_time^(2 * alpha)) / beta_t      # ψ(|u|^2)
-  range_mat <- beta_s * S^(gamma_st / 2)              # ℓ_ij = β_s ψ^{γ/2}
-  R_mat     <- matern_corr(D_spatial, nu, range_mat)  # spatial Matérn
-  K         <- sigma2 * S^(-tau) * R_mat              # σ² ψ^{-d/2} Matérn
+  S         <- 1 + (U_time^(2 * alpha)) / beta_t     
+  range_mat <- beta_s * S^(gamma_st / 2)             
+  R_mat     <- matern_corr(D_spatial, nu, range_mat)  
+  K         <- sigma2 * S^(-tau) * R_mat             
   
   diag(K) <- diag(K) + nug
   K
@@ -216,10 +216,10 @@ matern_spacetime_cov <- function(h, u, sigma2, beta_s, beta_t, gamma_st, nu, nug
   alpha <- 1
   tau   <- 1
   
-  S_u      <- 1 + (abs(u)^(2 * alpha)) / beta_t   # ψ(|u|^2)
-  range_u  <- beta_s * S_u^(gamma_st / 2)         # ℓ(u) = β_s ψ^{γ/2}
-  R        <- matern_corr(h, nu, range_u)         # Matérn(h; ℓ(u))
-  cov_val  <- sigma2 * S_u^(-tau) * R             # σ² ψ^{-d/2} Matérn
+  S_u      <- 1 + (abs(u)^(2 * alpha)) / beta_t  
+  range_u  <- beta_s * S_u^(gamma_st / 2)    
+  R        <- matern_corr(h, nu, range_u)        
+  cov_val  <- sigma2 * S_u^(-tau) * R            
   
   if (nug > 0 && u == 0) cov_val[h == 0] <- cov_val[h == 0] + nug
   cov_val
