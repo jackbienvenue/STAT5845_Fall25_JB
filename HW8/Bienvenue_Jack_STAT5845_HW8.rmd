@@ -250,19 +250,18 @@ plot_df$cov <- mapply(
 )
 
 # Convert to data frame
-plot_df <- as.data.frame(plot_df)
-
-# Use ggplot
-ggplot(plot_df, aes(x = h, y = cov, color = factor(u))) +
-  geom_line(linewidth = 1.1) +
-  scale_color_manual(values = colors) +
-  labs(
-    x = "Spatial distance h (miles)",
-    y = "Covariance C(h, u)",
-    color = "Time lag u (months)",
-    title = "Estimated Gneiting-Matérn Space–Time Covariance"
-  ) +
-  theme_minimal(base_size = 14)
+# plot_df <- as.data.frame(plot_df)
+# 
+# ggplot(plot_df, aes(x = h, y = cov, color = factor(u))) +
+#   geom_line(linewidth = 1.1) +
+#   scale_color_manual(values = colors) +
+#   labs(
+#     x = "Spatial distance h (miles)",
+#     y = "Covariance C(h, u)",
+#     color = "Time lag u (months)",
+#     title = "Estimated Gneiting-Matérn Space–Time Covariance"
+#   ) +
+#   theme_minimal(base_size = 14)
 ```
 
 
@@ -329,183 +328,194 @@ full_grid <- expand.grid(x = lon_seq, y = lat_seq)  # 10000 points
 # Matrix of grid locations (needed for rdist.earth)
 grid_locs <- as.matrix(full_grid[, c("x", "y")])
 
-# Number of future months to predict
-n_future <- 5
-future_months <- max(df$ym) %m+% months(1:n_future)
+#----------------
+# ============================================================
+# Krige over a spatial grid (whole Ireland) for a future month
+# ============================================================
 
-# Lists to store predictions and variances
-pred_list <- vector("list", n_future)
-var_list  <- vector("list", n_future)
+# Choose the first test month as the prediction month
+target_month <- min(df_test$ym)
+target_time  <- as.numeric(difftime(target_month, min(df$ym), units = "days")) / 30.4375
 
-decay_rate <- 0.95   
-var_growth <- 1.1 
+# Define spatial grid (buffer ±1 degree, grid resolution = 80)
+x_range <- range(coords$x)
+y_range <- range(coords$y)
+grid_res <- 80
+grid_df <- expand.grid(
+  x = seq(x_range[1] - 1, x_range[2] + 1, length.out = grid_res),
+  y = seq(y_range[1] - 1, y_range[2] + 1, length.out = grid_res)
+)
+grid_locs <- as.matrix(grid_df[, c("x", "y")])
 
-# Loop over each future month
-for (i in seq_len(n_future)) {
-  target_month <- future_months[i]
-  
-  # Compute time vector for grid points
-  target_time <- as.numeric(difftime(target_month, min(df$ym), units = "days")) / 30.4375
-  time_vec_grid <- rep(target_time, nrow(full_grid))
-  
-  # Compute space-time distances between grid and training sites
-  D_grid_train <- rdist.earth(grid_locs, locs_train, miles = TRUE)
-  U_grid_train <- abs(outer(time_vec_grid, time_vec_train, "-"))
-  
-  # Covariance between grid and training sites
-  k_grid <- build_K_spacetime(
-    sigma2_hat, beta_s_hat, nu_hat, nug = 0,
-    beta_t_hat, gamma_hat,
-    D_grid_train, U_grid_train
-  )
-  
-  # Simple Kriging predictions (mean = 0)
-  pred_grid <- as.vector(k_grid %*% (K_inv %*% train_Z))
-  
-  # Kriging variance
-  # 1) covariance at prediction points themselves
-  c0 <- diag(build_K_spacetime(
-    sigma2_hat, beta_s_hat, nu_hat,
-    nug = tausq_hat,          # include nugget
-    beta_t_hat, gamma_hat,
-    D_spatial = matrix(0, nrow=nrow(full_grid), ncol=nrow(full_grid)),  # zero distances
-    U_time = matrix(0, nrow=nrow(full_grid), ncol=nrow(full_grid))      # lag 0
-  ))
-  
-  # 2) cross-covariance with training points
-  k_grid <- build_K_spacetime(
-    sigma2_hat, beta_s_hat, nu_hat,
-    nug = 0,                  # nugget only in c0
-    beta_t_hat, gamma_hat,
-    D_grid_train, U_grid_train
-  )
-  
-  # 3) kriging variance formula
-  tmp <- k_grid %*% K_inv
-  var_grid <- c0 - rowSums(tmp * k_grid)
-  
-  # --- Apply mean decay and variance growth ---
-  pred_list[[i]] <- pred_grid * decay_rate^i
-  var_list[[i]]  <- var_grid * var_growth^i
-}
+# Space-time distances between grid and training sites
+D_grid_train <- rdist.earth(grid_locs, locs_train, miles = TRUE)
+time_vec_grid <- rep(target_time, nrow(grid_df))
+U_grid_train  <- abs(outer(time_vec_grid, time_vec_train, "-"))
 
-# Name the list elements by month
-names(pred_list) <- format(future_months, "%Y-%m")
-names(var_list)  <- format(future_months, "%Y-%m")
+# Build cross-covariance between grid points and training sites
+k_grid <- build_K_spacetime(sigma2_hat, beta_s_hat, nu_hat,
+                            nug = 0,
+                            beta_t_hat, gamma_hat,
+                            D_grid_train, U_grid_train)
+
+# Simple Kriging predictions (mean = 0)
+pred_grid <- as.vector(k_grid %*% (K_inv %*% train_Z))
+
+# Kriging variance (optional)
+var_grid <- sigma2_hat - rowSums(k_grid %*% K_inv * k_grid)
+
 ```
 
 
 # Plot Reproduction
 
 ```{r}
-ireland <- ne_countries(scale = "medium", country = "Ireland", returnclass = "sf") %>%
-           st_transform(4326)
-
-# Prepare long-format dataframe for mean predictions
-mean_long <- lapply(seq_along(pred_list), function(i) {
-  data.frame(
-    x = full_grid$x,
-    y = full_grid$y,
-    month = month_names[i],
-    mean = pred_list[[i]]
-  )
-}) %>% bind_rows()
-
-# Rename column to match plotting function (if it expects 'mean')
-mean_long <- mean_long %>% rename(value = mean)
-
-# Prepare long-format dataframe for variance predictions
-var_long <- lapply(seq_along(var_list), function(i) {
-  data.frame(
-    x = full_grid$x,
-    y = full_grid$y,
-    month = month_names[i],
-    var = var_list[[i]]
-  )
-}) %>% bind_rows()
-
-# ---------------------------
-# Define plotting region & aesthetics
-# ---------------------------
-
-lon_limits <- c(-11, -5)
-lat_limits <- c(51, 56)
-
-custom_colors <- scale_fill_gradientn(
-  colors = c("navy", "blue", "cyan", "yellow", "orange", "red", "maroon"),
-  labels = scales::number_format(accuracy = 0.1)
+# Ireland map for overlay
+ireland <- rnaturalearth::ne_countries(
+  scale = "medium",
+  country = "Ireland",
+  returnclass = "sf"
 )
 
-lon_breaks <- seq(-11, -5, by = 1)
-lat_breaks <- seq(51, 56, by = 1)
+# Global color scale based on training + prediction
+z_range <- range(st_train$resid, pred_grid, na.rm = TRUE)
+n_col <- 100
+cols_global <- tim.colors(n_col)
 
-# ---------------------------
-# Functions to make plots
-# ---------------------------
-lon_breaks_sparse <- seq(-11, -5, by = 2)  # show every 2 degrees
-lat_breaks_sparse <- seq(51, 56, by = 2)
+# # Plot SK prediction
+# quilt.plot(
+#   grid_df$x, grid_df$y, pred_grid,
+#   nx   = grid_res, ny = grid_res,
+#   xlab = "Longitude", ylab = "Latitude",
+#   main = paste0("SK prediction (residuals)\n t: ", target_month),
+#   zlim = z_range,
+#   col  = cols_global
+# )
+# par(new = TRUE)
+# plot(
+#   ireland$geometry,
+#   border = "black",
+#   lwd    = 1.4,
+#   col    = NA,
+#   add    = TRUE
+# )
 
-make_mean_plot <- function(m, title_i) {
-  dfm <- filter(mean_long, month == m)
+```
+
+```{r start}
+
+library(lubridate)
+
+n_future <- 5
+future_months <- max(df$ym) %m+% months(1:n_future)
+
+pred_list <- vector("list", n_future)
+var_list  <- vector("list", n_future)
+
+# Define grid
+x_range <- range(coords$x)
+y_range <- range(coords$y)
+grid_res <- 80
+grid_df <- expand.grid(
+  x = seq(x_range[1] - 1, x_range[2] + 1, length.out = grid_res),
+  y = seq(y_range[1] - 1, y_range[2] + 1, length.out = grid_res)
+)
+grid_locs <- as.matrix(grid_df[, c("x", "y")])
+
+for (i in seq_len(n_future)) {
+  target_month <- future_months[i]
+  target_time  <- as.numeric(difftime(target_month, min(df$ym), units = "days")) / 30.4375
   
-  ggplot() +
-    geom_sf(data = ireland, fill="grey90", color="black") +
-    geom_tile(data = dfm, aes(x=x, y=y, fill=value)) +
-    custom_colors +
-    coord_sf(xlim = lon_limits, ylim = lat_limits, expand = FALSE) +
-    scale_x_continuous(breaks = lon_breaks) +
-    scale_y_continuous(breaks = lat_breaks) +
-    labs(title = title_i, x="Longitude", y="Latitude") +
-    theme_minimal(base_size = 10) +
-    theme(
-      plot.title = element_text(size = 8, face = "bold"),
-      legend.position = "right",
-      legend.key.width = unit(0.3, "cm"),
-      legend.key.height = unit(2, "cm"),
-      legend.title = element_text(size=8),
-      legend.text = element_text(size=6)
-    )
+  # Space-time distances between grid and training
+  D_grid_train <- rdist.earth(grid_locs, locs_train, miles = TRUE)
+  time_vec_grid <- rep(target_time, nrow(grid_df))
+  U_grid_train  <- abs(outer(time_vec_grid, time_vec_train, "-"))
+  
+  # Cross-covariance
+  k_grid <- build_K_spacetime(sigma2_hat, beta_s_hat, nu_hat,
+                              nug = 0, beta_t_hat, gamma_hat,
+                              D_grid_train, U_grid_train)
+  
+  # SK mean prediction
+  pred_grid <- as.vector(k_grid %*% (K_inv %*% train_Z))
+  
+  # SK variance prediction
+  var_grid <- sigma2_hat - rowSums(k_grid %*% K_inv * k_grid)
+  
+  pred_list[[i]] <- pred_grid
+  var_list[[i]]  <- var_grid
 }
 
-make_var_plot <- function(m, title_i) {
-  dfv <- filter(var_long, month == m)
-  ggplot(dfv, aes(x=x, y=y, fill=var)) +
-    geom_tile() +
-    custom_colors +
-    coord_cartesian(xlim = lon_limits, ylim = lat_limits, expand = FALSE) +
-    scale_x_continuous(breaks = lon_breaks) +
-    scale_y_continuous(breaks = lat_breaks) +
-    labs(title = title_i, x="Longitude", y="Latitude") +
-    theme_minimal(base_size = 10) +
-    theme(
-      plot.title = element_text(size = 8, face = "bold"),
-      legend.position = "right",
-      legend.key.width = unit(0.3, "cm"),
-      legend.key.height = unit(2, "cm"),
-      legend.title = element_text(size=8),
-      legend.text = element_text(size=6)
-    )
+names(pred_list) <- format(future_months, "%Y-%m")
+names(var_list)  <- format(future_months, "%Y-%m")
+
+```
+
+```{r}
+ireland <- rnaturalearth::ne_countries(
+  scale = "medium",
+  country = "Ireland",
+  returnclass = "sf"
+)
+
+# Color scales
+n_col <- 100
+cols_mean <- tim.colors(n_col)
+cols_var  <- tim.colors(n_col)
+
+z_mean <- range(unlist(pred_list), na.rm = TRUE)
+z_var  <- range(unlist(var_list), na.rm = TRUE)
+
+```
+
+```{r}
+par(mfrow = c(2, 5), mar = c(4, 4, 3, 2))
+
+# --- Top row: mean predictions ---
+for (i in seq_len(n_future)) {
+  pred_grid <- pred_list[[i]]
+  
+  quilt.plot(
+    grid_df$x, grid_df$y, pred_grid,
+    nx   = grid_res, ny = grid_res,
+    xlab = "Longitude", ylab = "Latitude",
+    main = paste0("Mean, t = ", names(pred_list)[i]),
+    zlim = z_mean,
+    col  = cols_mean
+  )
+  
+  par(new = TRUE)
+  plot(
+    ireland$geometry,
+    border = "black",
+    lwd    = 1.4,
+    col    = NA,
+    add    = TRUE
+  )
 }
 
-# ---------------------------
-# Titles and plotting
-# ---------------------------
-
-mean_titles <- c("Mean, t=1978-07", "Mean, t=1978-08", "Mean, t=1978-09",
-                 "Mean, t=1978-10", "Mean, t=1978-11")
-var_titles  <- c("Var, t=1978-07", "Var, t=1978-08", "Var, t=1978-09",
-                 "Var, t=1978-10", "Var, t=1978-11")
-
-# Build plots
-list_means <- Map(make_mean_plot, month_names, mean_titles)
-list_vars  <- Map(make_var_plot, month_names, var_titles)
-
-# Combine into 2x5 layout
-final_plot <- (wrap_plots(list_means, ncol=5, guides="collect") /
-               wrap_plots(list_vars,  ncol=5, guides="collect")) &
-               theme(legend.position="right")
-
-final_plot
+# --- Bottom row: variance predictions ---
+for (i in seq_len(n_future)) {
+  var_grid <- var_list[[i]]
+  
+  quilt.plot(
+    grid_df$x, grid_df$y, var_grid,
+    nx   = grid_res, ny = grid_res,
+    xlab = "Longitude", ylab = "Latitude",
+    main = paste0("Var, t = ", names(var_list)[i]),
+    zlim = z_var,
+    col  = cols_var
+  )
+  
+  par(new = TRUE)
+  plot(
+    ireland$geometry,
+    border = "black",
+    lwd    = 1.4,
+    col    = NA,
+    add    = TRUE
+  )
+}
 ```
 
 # Open-ended questions
