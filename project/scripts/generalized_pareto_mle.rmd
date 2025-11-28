@@ -40,6 +40,8 @@ fit$rate        # estimated tail fraction phi_u (proportion of exceedances)
 fit$optim$convergence
 ```
 
+### NOTE THE STANDARD ERROR OF THE $\xi$ ESTIMATE! A CONFIDENCE INTERVAL WOULD SPAN OVER $\xi=$, SO WE CANNOT CLAIM THAT THE EXCEEDANCES OVER 44.7 mm ARE NOT EXPONENTIALLY-DISTRIBUTED!
+
 ## Plot fitted distribution against true points:
 
 ```{r}
@@ -66,7 +68,7 @@ gpd_df <- data.frame(y_seq = y_seq, gpd_pdf = gpd_pdf)
 
 # Plot: histogram of empirical excesses + fitted GPD pdf
 ggplot(hist_df, aes(x = y)) +
-  geom_histogram(aes(y = ..density..), bins = 30,
+  geom_histogram(aes(y = ..density..), bins = 25,
                  fill = "skyblue", color = "white", alpha = 0.6) +
   geom_line(data = gpd_df, aes(x = y_seq, y = gpd_pdf),
             color = "red", size = 1.1) +
