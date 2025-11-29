@@ -181,8 +181,20 @@ ggplot(rl_table, aes(x = return_period, y = estimate)) +
   theme_minimal(base_size = 14)
 ```
 
+```{r generating-plots, fig.height = 8}
+plot(gev_fit_ext)
 
---------
+# If you want each individually:
 
-# Refitting Ashville GEV with 3-day-precipitation
+# 2. Density / histogram plot
+plot(gev_fit_ext, type = "density")
 
+# 3. QQ plot
+plot(gev_fit_ext, type = "qq")
+
+# 4. Return Level plot
+plot(gev_fit_ext, type = "rl")
+
+# 5. Probability plot
+plot(gev_fit_ext, type = "prob")
+```
