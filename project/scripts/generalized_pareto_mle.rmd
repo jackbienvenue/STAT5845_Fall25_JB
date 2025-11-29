@@ -106,6 +106,10 @@ fit_ex <- fevd(
 
 fit_ex
 
+
+png(filename = "../figures/gpd_subplots.png", width = 800, height = 800)
+plot(fit_ex)
+dev.off()
 plot(fit_ex)
 
 ci(fit_ex)

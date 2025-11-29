@@ -182,19 +182,8 @@ ggplot(rl_table, aes(x = return_period, y = estimate)) +
 ```
 
 ```{r generating-plots, fig.height = 8}
+png("../figures/gev_subplots.png", width = 800, height = 800)
+plot(gev_fit_ext) 
+dev.off()
 plot(gev_fit_ext)
-
-# If you want each individually:
-
-# 2. Density / histogram plot
-plot(gev_fit_ext, type = "density")
-
-# 3. QQ plot
-plot(gev_fit_ext, type = "qq")
-
-# 4. Return Level plot
-plot(gev_fit_ext, type = "rl")
-
-# 5. Probability plot
-plot(gev_fit_ext, type = "prob")
 ```
