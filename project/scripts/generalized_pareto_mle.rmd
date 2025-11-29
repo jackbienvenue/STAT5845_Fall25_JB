@@ -18,6 +18,7 @@ library(evmix)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(extRemes)
 
 # Import data
 asheville_df <- read.csv("../data/ghcn_roi_daily_data/Asheville.csv")
@@ -68,7 +69,7 @@ gpd_df <- data.frame(y_seq = y_seq, gpd_pdf = gpd_pdf)
 
 # Plot: histogram of empirical excesses + fitted GPD pdf
 ggplot(hist_df, aes(x = y)) +
-  geom_histogram(aes(y = ..density..), bins = 25,
+  geom_histogram(aes(y = ..density..), breaks = seq(0, max(y), length.out = 21),
                  fill = "skyblue", color = "white", alpha = 0.6) +
   geom_line(data = gpd_df, aes(x = y_seq, y = gpd_pdf),
             color = "red", size = 1.1) +
@@ -80,75 +81,40 @@ ggplot(hist_df, aes(x = y)) +
   theme_minimal()
 ```
 
-``` {r return-level-plot}
-# Get other parameter estimates required for return level computation:
-phi_hat <- fit$rate # proportion of exceedances
-cov_mat <- fit$cov # 2x2 covariance matrix for (sigma, xi)
+``` {r return-level-plot, fig.height = 8}
+library(extRemes)
+library(dplyr)
+library(ggplot2)
 
-##### Return levels for a grid of return periods #####
+# Load + clean
+ashe <- read.csv("../data/ghcn_roi_daily_data/Asheville.csv") %>% drop_na()
 
-return_periods <- seq(1.01, 500, length.out = 300)  # avoid T=1
+# Threshold (99th percentile)
+u <- quantile(ashe$precipitation, 0.99)
 
-# Return level function
-zT <- function(T, sigma, xi, phi) {
-  u + (sigma/xi) * ((T * phi)^xi - 1)
-}
+# Data for POT fit
+ashe_pot <- ashe %>% filter(precipitation > u)
 
-# Compute curve
-rl <- zT(return_periods, sigma_hat, xi_hat, phi_hat)
-
-##### Delta-method CI #####
-
-# Gradient of z(T) w.r.t (sigma, xi)
-grad_z <- function(T, sigma, xi, phi) {
-  A <- T * phi
-  d_sigma <- (1/xi) * (A^xi - 1)
-  d_xi <- -(sigma/xi^2) * (A^xi - 1) +
-           (sigma/xi) * (A^xi * log(A))
-  c(d_sigma, d_xi)
-}
-
-# Standard errors
-se_rl <- sapply(return_periods, function(T) {
-  g <- grad_z(T, sigma_hat, xi_hat, phi_hat)
-  sqrt(t(g) %*% cov_mat %*% g)
-})
-
-# 95% CI
-rl_lower <- rl - 1.96 * se_rl
-rl_upper <- rl + 1.96 * se_rl
-
-return_df <- data.frame(
-  T = return_periods,
-  rl = rl,
-  lower = rl_lower,
-  upper = rl_upper
+# Fit GPD with extRemes
+fit_ex <- fevd(
+  precipitation,
+  threshold = u,
+  type = "GP",
+  data = ashe,
+  method = "MLE"
 )
 
-##### Observed exceedances plotted with empirical return periods #####
+fit_ex
 
-exceedances <- asheville_df$precipitation[asheville_df$precipitation > u]
+plot(fit_ex)
 
-# Empirical return period: T_i = 1 / (rank/N exceedance rate)
-N_ex <- length(exceedances)
-empirical_T <- 1 / ((1:N_ex)/N_ex * phi_hat)  # increasing T
+ci(fit_ex)
+ci(fit_ex, type = "parameter")
 
-obs_df <- data.frame(
-  T = empirical_T,
-  z = exceedances
-)
-View(obs_df)
-##### Plot #####
+plot(fit_ex, type = "rl")
 
-ggplot(return_df, aes(x = T, y = rl)) +
-  geom_line(color = "blue", linewidth = 1.2) +
-  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.25, fill = "blue") +
-  geom_point(data = obs_df, aes(x = T, y = z), color = "red", alpha = 0.6) +
-  scale_x_log10() +
-  labs(
-    title = "Generalized Pareto Return Level Plot (POT method)",
-    x = "Return period T (years, log scale)",
-    y = "Return level (mm)"
-  ) +
-  theme_minimal(base_size = 14)
+# Get explicit return levels for 5,10,50,100,500, and 1000-year storms
+return.level(fit_ex, return.period = c(5, 10, 50, 100, 500, 1000))
+
+# NOTE: Helene also brought 103.9mm (9/25/24) and 104.4 (9/27/24)
 ```
