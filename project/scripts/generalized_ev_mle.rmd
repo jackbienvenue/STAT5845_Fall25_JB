@@ -69,121 +69,124 @@ print(data.frame(parameter = c("loc","scale","shape"), estimate = est_evd, se = 
 
 # Compute return levels using evd::qgev:
 # Return period T years => non-exceedance prob p = 1 - 1/T for annual maxima
-return_periods <- c(20, 50, 100)
+return_periods <- c(20, 50, 100, 114, 500)
 pvals <- 1 - 1/return_periods
 rls_evd <- sapply(pvals, function(p) qgev(p, loc = est_evd["loc"], scale = est_evd["scale"], shape = est_evd["shape"]))
 rl_df <- data.frame(return_period = return_periods, return_level = rls_evd)
 print(rl_df)
 ```
 
-``` {r}
-#------------------------------------------------------------------------#
-# extRemes::fevd 
-# fevd does MLE and supports return-level CIs via profile-likelihood
-# method = "MLE" is default. set type = "GEV"
-gev_fit_ext <- fevd(x, type = "GEV", method = "MLE", units = "years")
 
-print(gev_fit_ext)       # brief
-summary(gev_fit_ext)     # more details
+```{r return-level-calculation}
+# RETURN LEVELS
 
-# param estimates
-params_ext <- gev_fit_ext$results$par
-cov_ext <- gev_fit_ext$results$cov
-se_ext <- if (!is.null(cov_ext)) sqrt(diag(cov_ext)) else rep(NA, length(params_ext))
+# Parameters for Gumbel fit
+mu_gumbel <- 67.02
+sigma_gumbel <- 18.81
 
-gev_summary_ext <- data.frame(
-  parameter = names(params_ext),
-  estimate  = params_ext,
-  se        = se_ext
+# Desired return periods (years)
+return_periods <- c(5, 10, 50, 100, 500, 1000)
+
+# Compute return levels
+return_levels <- mu_gumbel - sigma_gumbel * log( -log(1 - 1/return_periods) )
+
+# Combine into a data frame
+gev_rl_df <- data.frame(
+  ReturnPeriod_years = return_periods,
+  ReturnLevel_mm = return_levels
 )
 
-gev_summary_ext
+print(gev_rl_df)
 
-# Return Level & CI
-safe_return_level <- function(fit, rp) {
-  
-  # 1. point estimate
-  rl_est <- return.level(fit, return.period = rp)[1]
-  
-  # ----------------- Try profile likelihood CI -----------------
-  ci_proflik <- try(
-    ci(fit, type="return.level", return.period = rp, method="proflik"),
-    silent = TRUE
-  )
-  
-  if (!inherits(ci_proflik, "try-error") &&
-      is.list(ci_proflik) &&
-      !is.null(ci_proflik$ci) &&
-      length(ci_proflik$ci) == 2 &&
-      all(is.finite(ci_proflik$ci))) {
-    
-    return(data.frame(
-      return_period = rp,
-      estimate = rl_est,
-      lower = ci_proflik$ci[1],
-      upper = ci_proflik$ci[2],
-      ci_method = "proflik"
-    ))
-  }
-  
-  # ----------------- Try delta method CI -----------------
-  ci_delta <- try(
-    ci(fit, type="return.level", return.period = rp, method="delta"),
-    silent = TRUE
-  )
-  
-  if (!inherits(ci_delta, "try-error") &&
-      is.list(ci_delta) &&
-      !is.null(ci_delta$ci) &&
-      length(ci_delta$ci) == 2 &&
-      all(is.finite(ci_delta$ci))) {
-    
-    return(data.frame(
-      return_period = rp,
-      estimate = rl_est,
-      lower = ci_delta$ci[1],
-      upper = ci_delta$ci[2],
-      ci_method = "delta"
-    ))
-  }
-  
-  # ----------------- Fallback: NA bounds -----------------
-  return(data.frame(
-    return_period = rp,
-    estimate = rl_est,
-    lower = NA,
-    upper = NA,
-    ci_method = "none"
-  ))
-}
+# HELENE
+# Example: return period for a level x = 146.8 mm
+x_level <- 146.8
 
-return_periods <- c(2, 5, 10, 20, 50, 100, 200)
+T_x <- 1 / (1 - exp( -exp( -(x_level - mu_gumbel)/sigma_gumbel ) ))
 
-rl_table <- do.call(
-  rbind,
-  lapply(return_periods, function(rp) safe_return_level(gev_fit_ext, rp))
-)
-
-rl_table
-
-# --------- 4. Return Level Plot -------------#
-ggplot(rl_table, aes(x = return_period, y = estimate)) +
-  geom_line(color = "blue") +
-  geom_point(size = 2) +
-  geom_ribbon(aes(ymin = lower, ymax = upper),
-              alpha = 0.2, fill = "blue",
-              na.rm = TRUE) +
-  scale_x_log10(breaks = return_periods) +
-  labs(title = "GEV Return Level Plot",
-       x = "Return period (years, log scale)",
-       y = "Return level",
-       caption = "CIs via profile likelihood (preferred), delta method if needed.") +
-  theme_minimal(base_size = 14)
+cat("Return period for", x_level, "mm =", round(T_x, 1), "years\n")
 ```
 
-```{r generating-plots, fig.height = 8}
-png("../figures/gev_subplots.png", width = 800, height = 800)
-plot(gev_fit_ext) 
-dev.off()
-plot(gev_fit_ext)
+```{r, fig.width = 8, fig.height=5.25}
+#-----EMPIRICAL POINTS FOR PLOT-------------
+# Sort annual maxima in descending order
+annual_max_sorted <- annual_max %>%
+  arrange(desc(annual_max_precip)) %>%
+  mutate(rank = row_number(),
+         ReturnPeriod_years = n() / rank,  # T = N/i, for annual maxima
+         ReturnLevel_mm = annual_max_precip)
+empirical_df <- annual_max_sorted
+
+#------- SPECIAL POINT FOR HURRICANE HELENE RETURN PERIOD -------------------
+x_level <- 146.8
+special_T_years <- 1 / (1 - exp( -exp( -(x_level - mu_gumbel)/sigma_gumbel ) ))
+
+special_point <- data.frame(
+  ReturnPeriod_years = special_T_years,
+  ReturnLevel_mm = x_level
+)
+
+#-------- 95% CONFIDENCE INTERVAL FORMULATION --------------------------------
+se_mu <- 5.0    # example: replace with real value from gev_fit_evd$std.err
+se_sigma <- 2.0 # example
+
+# Return periods
+return_periods <- c(5, 10, 50, 100, 500, 1000)
+k_T <- -log(1 - 1/return_periods)
+
+# Compute return levels
+return_levels <- mu_gumbel - sigma_gumbel * log(k_T)
+
+# Delta method standard errors
+se_rl <- sqrt(se_mu^2 + (log(k_T) * se_sigma)^2)
+
+# 95% CI
+lower_ci <- return_levels - 1.96 * se_rl
+upper_ci <- return_levels + 1.96 * se_rl
+
+# Combine into data frame for plotting
+gev_rl_ci_df <- data.frame(
+  ReturnPeriod_years = return_periods,
+  ReturnLevel_mm = return_levels,
+  Lower_CI = lower_ci,
+  Upper_CI = upper_ci
+)
+
+#-------- PLOT CALL ----------------------------------------------------------
+ggplot() +
+  # 95% CI ribbon
+  geom_ribbon(data = gev_rl_ci_df,
+              aes(x = ReturnPeriod_years, ymin = Lower_CI, ymax = Upper_CI),
+              fill = "lightblue", alpha = 0.3) +
+  # Gumbel fit line
+  geom_line(data = gev_rl_ci_df, aes(x = ReturnPeriod_years, y = ReturnLevel_mm),
+            color = "cyan4", size = 1) +
+  # Empirical annual maxima
+  geom_point(data = empirical_df, aes(x = ReturnPeriod_years, y = ReturnLevel_mm),
+             color = "red3", size = 2, alpha = 0.7) +
+  # Special labeled point
+  geom_point(data = special_point, aes(x = ReturnPeriod_years, y = ReturnLevel_mm),
+             color = "darkgreen", size = 4) +
+  geom_text(data = special_point,
+            aes(x = ReturnPeriod_years, y = ReturnLevel_mm,
+                label = paste0("(", round(ReturnPeriod_years,1), " yr, ", ReturnLevel_mm, " mm)")),
+            vjust = -1.5, hjust = 0.5, color = "darkgreen", fontface = "bold",
+            size = 3.5) +
+  # Log scale x-axis
+  scale_x_log10(
+    limits = c(5, max(c(gev_rl_ci_df$ReturnPeriod_years, empirical_df$ReturnPeriod_years))),
+    breaks = c(5, 10, 50, 100, 500, 1000),
+    labels = c(5, 10, 50, 100, 500, 1000)
+  ) +
+  labs(
+    title = "Return Level vs Return Period (Empirical + Gumbel Fit)",
+    subtitle = "Empirical annual maxima vs Gumbel return levels with 95% CI",
+    x = "Return Period (years, log scale)",
+    y = "Return Level (mm)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
 ```

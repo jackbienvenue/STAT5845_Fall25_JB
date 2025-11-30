@@ -6,11 +6,11 @@ output: pdf_document
 
 ### Generalized Pareto Distribution Fit
 
-GPD has three parameters: $\mu$--location, $\sigma$--scale, and $\xi$--shape. 
+GPD has three parameters: $\mu$--location, $\sigma$--scale, and $\xi$--shape.
 
-We can estimate the parameters through maximum likelihood estimation. 
+We can estimate the parameters through maximum likelihood estimation.
 
-A few people have built methods for MLE of $\sigma$ and $\xi$. The one used here comes from https://search.r-project.org/CRAN/refmans/evmix/html/fgpd.html.
+A few people have built methods for MLE of $\sigma$ and $\xi$. The one used here comes from <https://search.r-project.org/CRAN/refmans/evmix/html/fgpd.html>.
 
 ```{r}
 ## Import packages
@@ -81,44 +81,129 @@ ggplot(hist_df, aes(x = y)) +
   theme_minimal()
 ```
 
-``` {r return-level-plot, fig.height = 8}
-library(extRemes)
-library(dplyr)
-library(ggplot2)
+```{r return-level-plot, fig.width = 8, fig.height=5.25}
+# --- PARAMETERS ---
+u <- 44.7
+sigma_hat <- 18.5
+xi_hat <- 0
 
-# Load + clean
-ashe <- read.csv("../data/ghcn_roi_daily_data/Asheville.csv") %>% drop_na()
+# Number of observations and exceedances
+N <- nrow(asheville_df)
+N_exc <- sum(asheville_df$precipitation > u)
 
-# Threshold (99th percentile)
-u <- quantile(ashe$precipitation, 0.99)
+# Tail fraction (rate of exceedances)
+lambda <- N_exc / N
 
-# Data for POT fit
-ashe_pot <- ashe %>% filter(precipitation > u)
+# Desired return periods (years)
+# Assume daily data -> convert years to days (365.25 days per year)
+return_periods_years <- c(5, 10, 50, 100, 500, 1000)
+return_periods_days <- return_periods_years * 365.25
 
-# Fit GPD with extRemes
-fit_ex <- fevd(
-  precipitation,
-  threshold = u,
-  type = "GP",
-  data = ashe,
-  method = "MLE"
+# --- CALCULATE RETURN LEVELS ---
+if(xi_hat == 0){
+  # Exponential GPD formula for return level
+  return_levels <- u + sigma_hat * log(lambda * return_periods_days)
+} else {
+  # General formula for xi != 0
+  return_levels <- u + (sigma_hat / xi_hat) * ((lambda * return_periods_days)^xi_hat - 1)
+}
+
+# Combine results into a table
+results <- data.frame(
+  ReturnPeriod_years = return_periods_years,
+  ReturnLevel_mm = return_levels
 )
 
-fit_ex
+print(results)
+
+# --- Extract sigma standard error from fit ---
+# This assumes your fgpd fit object provides standard errors
+SE_sigma <- fit$se[1]  # adjust name depending on your fit object
+
+# Return periods in days (daily data)
+return_periods_days <- return_periods_years * 365.25
+
+# Compute return levels
+return_levels <- u + sigma_hat * log(lambda * return_periods_days)
+
+# Compute standard errors of return levels (delta method)
+SE_return_levels <- log(lambda * return_periods_days) * SE_sigma
+
+# Compute 95% CI bounds
+lower_CI <- return_levels - 1.96 * SE_return_levels
+upper_CI <- return_levels + 1.96 * SE_return_levels
+
+# Add to results data frame
+results$Lower_CI <- lower_CI
+results$Upper_CI <- upper_CI
 
 
-png(filename = "../figures/gpd_subplots.png", width = 800, height = 800)
-plot(fit_ex)
-dev.off()
-plot(fit_ex)
+# -------- GET EMPIRICAL RETURN POINTS
 
-ci(fit_ex)
-ci(fit_ex, type = "parameter")
+precip_sorted <- sort(asheville_df$precipitation, decreasing = TRUE)
 
-plot(fit_ex, type = "rl")
+N <- length(precip_sorted)
 
-# Get explicit return levels for 5,10,50,100,500, and 1000-year storms
-return.level(fit_ex, return.period = c(5, 10, 50, 100, 500, 1000))
+# Empirical return periods (Weibull plotting formula)
+empirical_RP_days <- (N + 1) / seq_along(precip_sorted)  # i = 1,2,...,N
+empirical_RP_years <- empirical_RP_days / 365.25
 
-# NOTE: Helene also brought 103.9mm (9/25/24) and 104.4 (9/27/24)
+# Combine into a data frame
+empirical_df <- data.frame(
+  ReturnPeriod_years = empirical_RP_years,
+  ReturnLevel_mm = precip_sorted
+)
+
+#-------- GET A SPECIAL LABEL FOR HURRICANE HELENE'S WORST DAY:
+# Special return level
+special_x <- 146.8
+
+# Compute corresponding return period (days)
+special_T_days <- (1 / lambda) * exp((special_x - u) / sigma_hat)
+
+# Convert to years
+special_T_years <- special_T_days / 365.25
+
+# Create a data frame for the special point
+special_point <- data.frame(
+  ReturnPeriod_years = special_T_years,
+  ReturnLevel_mm = special_x
+)
+
+#---------------------#
+ggplot() +
+  # CI ribbon
+  geom_ribbon(data = results, aes(x = ReturnPeriod_years, ymin = Lower_CI, ymax = Upper_CI),
+              fill = "lightblue", alpha = 0.3) +
+  # Fitted GPD line
+  geom_line(data = results, aes(x = ReturnPeriod_years, y = ReturnLevel_mm),
+            color = "cyan4", size = 1) +
+  # Empirical points
+  geom_point(data = empirical_df, aes(x = ReturnPeriod_years, y = ReturnLevel_mm),
+             color = "red3", size = 2, alpha = 0.7) +
+  # Special labeled point
+  geom_point(data = special_point, aes(x = ReturnPeriod_years, y = ReturnLevel_mm),
+             color = "darkgreen", size = 4) +
+  geom_text(data = special_point,
+            aes(x = ReturnPeriod_years, y = ReturnLevel_mm,
+                label = paste0("(", round(ReturnPeriod_years,1), " yr, ", ReturnLevel_mm, " mm)")),
+            vjust = -1.75, hjust = 0.5, color = "darkgreen", fontface = "bold",
+            size = 4) +
+  # Log scale with limits
+  scale_x_log10(
+    limits = c(5, max(c(results$ReturnPeriod_years, empirical_df$ReturnPeriod_years))),
+    breaks = c(5, 10, 50, 100, 500, 1000),
+    labels = c(5, 10, 50, 100, 500, 1000)
+  ) +
+  labs(
+    title = "Return Level vs Return Period (Empirical + GPD Fit)",
+    subtitle = "Empirical return periods vs GPD fit with 95% CI",
+    x = "Return Period (years, log scale)",
+    y = "Return Level (mm)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
 ```
